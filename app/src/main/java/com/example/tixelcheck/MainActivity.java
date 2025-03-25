@@ -72,8 +72,60 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Create notification channel for Android 8.0 and higher
+        createNotificationChannel();
+        
         // Start the monitoring service
         TicketMonitorService.scheduleJob(this);
+        
+        // Ensure all active URLs have alarms set
+        resetActiveAlarms();
+    }
+    
+    /**
+     * Creates the notification channel for high-priority alerts
+     */
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            
+            // Check if channel already exists
+            if (notificationManager.getNotificationChannel("tixel_check_channel") != null) {
+                return;
+            }
+            
+            NotificationChannel channel = new NotificationChannel(
+                    "tixel_check_channel",
+                    "Tixel Check Notifications",
+                    NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Notifications for ticket availability");
+            channel.enableLights(true);
+            channel.setLightColor(Color.RED);
+            channel.enableVibration(true);
+            channel.setVibrationPattern(new long[]{0, 1000, 500, 1000, 500, 1000});
+            
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build();
+            channel.setSound(Settings.System.DEFAULT_ALARM_ALERT_URI, audioAttributes);
+            
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+    
+    /**
+     * Makes sure all active URLs have corresponding alarms set
+     */
+    private void resetActiveAlarms() {
+        List<MonitoredUrl> activeUrls = UrlDatabase.getInstance(this).getActiveUrls();
+        for (MonitoredUrl url : activeUrls) {
+            // Cancel any existing alarm first to avoid duplicates
+            TicketCheckerAlarm.cancelAlarm(this, url.getId());
+            // Then set up a new alarm
+            TicketCheckerAlarm.setAlarm(this, url);
+        }
     }
     
     /**
@@ -86,32 +138,6 @@ public class MainActivity extends AppCompatActivity {
         // Create notification with same parameters as the real alert
         Intent intent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 1001, intent, PendingIntent.FLAG_IMMUTABLE);
-
-        NotificationChannel channel = null;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            channel = notificationManager.getNotificationChannel("tixel_check_channel");
-            if (channel == null) {
-                channel = new NotificationChannel(
-                        "tixel_check_channel",
-                        "Tixel Check Notifications",
-                        NotificationManager.IMPORTANCE_HIGH
-                );
-                channel.setDescription("Notifications for ticket availability");
-                channel.enableLights(true);
-                channel.setLightColor(Color.RED);
-                channel.enableVibration(true);
-                channel.setVibrationPattern(new long[]{0, 1000, 500, 1000, 500, 1000});
-                
-                AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .build();
-                channel.setSound(Settings.System.DEFAULT_ALARM_ALERT_URI, audioAttributes);
-                
-                notificationManager.createNotificationChannel(channel);
-            }
-        }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "tixel_check_channel")
                 .setSmallIcon(R.drawable.ic_notification)
