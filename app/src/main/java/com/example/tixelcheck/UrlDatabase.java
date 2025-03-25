@@ -64,10 +64,10 @@ public class UrlDatabase extends SQLiteOpenHelper {
 
         if (cursor.moveToFirst()) {
             do {
-                long id = cursor.getLong(cursor.getColumnIndex(COLUMN_ID));
-                String url = cursor.getString(cursor.getColumnIndex(COLUMN_URL));
-                int frequency = cursor.getInt(cursor.getColumnIndex(COLUMN_FREQUENCY));
-                boolean active = cursor.getInt(cursor.getColumnIndex(COLUMN_ACTIVE)) == 1;
+                long id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID));
+                String url = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_URL));
+                int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_FREQUENCY));
+                boolean active = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ACTIVE)) == 1;
                 urlList.add(new MonitoredUrl(id, url, frequency, active));
             } while (cursor.moveToNext());
         }
@@ -100,9 +100,9 @@ public class UrlDatabase extends SQLiteOpenHelper {
 
         if (cursor.moveToFirst()) {
             do {
-                long id = cursor.getLong(cursor.getColumnIndex(COLUMN_ID));
-                String url = cursor.getString(cursor.getColumnIndex(COLUMN_URL));
-                int frequency = cursor.getInt(cursor.getColumnIndex(COLUMN_FREQUENCY));
+                long id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID));
+                String url = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_URL));
+                int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_FREQUENCY));
                 urlList.add(new MonitoredUrl(id, url, frequency, true));
             } while (cursor.moveToNext());
         }
