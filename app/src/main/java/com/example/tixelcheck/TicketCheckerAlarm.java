@@ -30,7 +30,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     private static final String CHANNEL_ID = "tixel_check_channel";
     
     // Add static MediaPlayer reference to handle alarm sounds
-    public static MediaPlayer activeAlarmPlayer;
+    private static MediaPlayer activeAlarmPlayer;
     public static long activeAlarmUrlId;
     
     // Method to stop an active alarm sound
@@ -38,7 +38,11 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         synchronized (TicketCheckerAlarm.class) {
             if (activeAlarmPlayer != null) {
                 if (activeAlarmPlayer.isPlaying()) {
-                    activeAlarmPlayer.stop();
+                    try {
+                        activeAlarmPlayer.stop();
+                    } catch (IllegalStateException e) {
+                        Log.e(TAG, "Error stopping alarm sound", e);
+                    }
                 }
                 activeAlarmPlayer.release();
                 activeAlarmPlayer = null;
@@ -136,20 +140,30 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
 
     private void checkTicketAvailability(Context context, String url, long urlId) {
         try {
-            Document doc = Jsoup.connect(url).get();
+            Document doc = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                    .timeout(15000)
+                    .get();
             
-            // Enhanced ticket detection logic with more patterns
+            // Enhanced ticket detection logic with more specific patterns for Tixel
             boolean hasTickets = doc.select(".tickets-available").size() > 0 || 
-                                doc.select("[class*=ticket]").size() > 0 ||
-                                doc.select("[class*=available]").size() > 0 ||
-                                doc.select("[id*=ticket]").size() > 0 ||
+                                doc.select(".ticket-panel:not(.sold-out)").size() > 0 ||
+                                doc.select(".ticket-status:contains(Available)").size() > 0 ||
+                                doc.select(".ticket-status:not(:contains(Not available))").size() > 0 ||
+                                doc.select(".available-tickets").size() > 0 ||
+                                doc.select(".tixel-ticket-card:not(.tixel-ticket-card--sold-out)").size() > 0 ||
+                                doc.select("[class*=ticket]:not([class*=sold]),[class*=ticket]:not([class*=unavailable])").size() > 0 ||
                                 doc.select("button:contains(Buy)").size() > 0 ||
+                                doc.select("button:contains(Purchase)").size() > 0 ||
+                                doc.select("a:contains(Buy)").size() > 0 ||
                                 doc.select("a:contains(Purchase)").size() > 0 ||
                                 doc.text().toLowerCase().contains("ticket available") ||
                                 doc.text().toLowerCase().contains("tickets available") ||
                                 doc.text().toLowerCase().contains("buy ticket") ||
                                 doc.text().toLowerCase().contains("purchase ticket") ||
-                                doc.text().toLowerCase().contains("add to cart");
+                                doc.text().toLowerCase().contains("add to cart") ||
+                                !doc.text().toLowerCase().contains("no tickets available") &&
+                                !doc.text().toLowerCase().contains("sold out");
             
             if (hasTickets) {
                 // Trigger high-priority notification with sound and vibration
@@ -211,6 +225,13 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     
     private void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+            
+            // Check if channel already exists
+            if (notificationManager.getNotificationChannel(CHANNEL_ID) != null) {
+                return;
+            }
+            
             // Create a high-priority notification channel for alerts
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
@@ -233,7 +254,6 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
             channel.setSound(Settings.System.DEFAULT_ALARM_ALERT_URI, audioAttributes);
             
             // Create the channel
-            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
     }
@@ -283,8 +303,12 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                 .setVibrate(new long[] { 0, 500, 200, 500, 200, 500 }) // Vibration pattern
                 .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI) // Use alarm sound
                 .setLights(Color.RED, 1000, 500) // Flash LED if available
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
-                .setFullScreenIntent(mainPendingIntent, true); // Full screen intent for high visibility
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(message));
+        
+        // Add full screen intent for heads-up display
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            builder.setFullScreenIntent(mainPendingIntent, true);
+        }
                 
         // Add action buttons to the notification
         if (url != null) {
