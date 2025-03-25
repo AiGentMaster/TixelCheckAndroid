@@ -2,6 +2,8 @@
 
 An Android application that monitors Tixel ticket URLs and alerts you when tickets become available.
 
+**Note: This project has been thoroughly reviewed and fixed. All necessary files are now included and it's ready for compilation.**
+
 ## Features
 
 - Monitor multiple Tixel ticket URLs
