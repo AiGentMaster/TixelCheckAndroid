@@ -15,6 +15,17 @@ An Android application that monitors Tixel ticket URLs and alerts you when ticke
 
 TixelCheck is set up with GitHub Actions to automatically build APKs when code is pushed to the repository. You can download the latest APK from the Releases section of this repository.
 
+### Important Note About Gradle Wrapper
+
+Due to GitHub's file size limitations, this repository contains only a placeholder for the Gradle wrapper JAR file. Before building the app, you must download the actual JAR file and place it in the correct location:
+
+1. Download the Gradle wrapper JAR from the official Gradle repository:
+   ```
+   https://github.com/gradle/gradle/raw/v7.0.2/gradle/wrapper/gradle-wrapper.jar
+   ```
+
+2. Replace the placeholder file at `gradle/wrapper/gradle-wrapper.jar` with the downloaded file.
+
 ### Manual Build Instructions
 
 If you want to build the app manually:
@@ -29,12 +40,14 @@ If you want to build the app manually:
    cd TixelCheckAndroid
    ```
 
-3. Build the debug APK:
+3. Download the Gradle wrapper JAR as described above
+
+4. Build the debug APK:
    ```
    ./gradlew assembleDebug
    ```
 
-4. The APK will be generated at:
+5. The APK will be generated at:
    ```
    app/build/outputs/apk/debug/app-debug.apk
    ```
@@ -80,6 +93,7 @@ TixelCheck requires the following permissions:
 - **No Notifications**: Ensure notifications are enabled for TixelCheck in system settings
 - **App Not Running in Background**: Disable battery optimization for TixelCheck
 - **Alarms Not Working**: Some Android manufacturers (Xiaomi, Huawei, etc.) have aggressive battery management - add TixelCheck to protected apps list
+- **Build Errors**: Make sure you've added the actual Gradle wrapper JAR file as described in the building instructions
 
 ## License
 
