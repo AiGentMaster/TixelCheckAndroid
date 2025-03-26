@@ -1,13 +1,7 @@
 This is a test file to trigger a new build.
 Date: 2025-03-26
-Time: 12:45 PM
+Time: 1:00 PM
 
-This build should fix both the Gradle version issues and the Android resource issues.
-We've added:
-1. Custom attributes (attrs.xml)
-2. Color resources (colors.xml)
-3. Night theme colors (values-night/colors.xml)
-4. Theme styles (styles.xml)
-5. String resources (strings.xml)
-6. Basic icons and layouts
-7. Placeholder Java classes for all components referenced in AndroidManifest.xml
+This build should fix the duplicate resource issues:
+1. Removed duplicate launcher icon XML files (keeping the PNG versions)
+2. Removed duplicate theme style (keeping the one in themes.xml)
