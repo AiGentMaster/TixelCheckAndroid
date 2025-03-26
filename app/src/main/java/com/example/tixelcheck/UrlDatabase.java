@@ -2,13 +2,10 @@ package com.example.tixelcheck;
 
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,18 +22,16 @@ public class UrlDatabase extends SQLiteOpenHelper {
     private static final String COLUMN_EVENT_DATE = "event_date";
     private static final String COLUMN_EVENT_TYPE = "event_type";
     private static final String COLUMN_LAST_CHECKED = "last_checked";
-    private static final String COLUMN_CONSECUTIVE_ERRORS = "consecutive_errors";
     private static final String COLUMN_TICKETS_FOUND = "tickets_found";
     
-    // Table for storing history of ticket finds
+    // For ticket found history
     private static final String TABLE_HISTORY = "ticket_history";
     private static final String COLUMN_HISTORY_ID = "id";
     private static final String COLUMN_HISTORY_URL_ID = "url_id";
     private static final String COLUMN_HISTORY_TIMESTAMP = "timestamp";
-    private static final String COLUMN_HISTORY_MESSAGE = "message";
+    private static final String COLUMN_HISTORY_NOTE = "note";
 
     private static UrlDatabase instance;
-    private Context appContext;
 
     public static synchronized UrlDatabase getInstance(Context context) {
         if (instance == null) {
@@ -47,13 +42,12 @@ public class UrlDatabase extends SQLiteOpenHelper {
 
     private UrlDatabase(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-        this.appContext = context.getApplicationContext();
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // Create URLs table
-        String createUrlsTable = "CREATE TABLE " + TABLE_URLS + "(" +
+        // Create main URLs table
+        String createTable = "CREATE TABLE " + TABLE_URLS + "(" +
                 COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COLUMN_URL + " TEXT, " +
                 COLUMN_FREQUENCY + " INTEGER, " +
@@ -62,40 +56,36 @@ public class UrlDatabase extends SQLiteOpenHelper {
                 COLUMN_EVENT_DATE + " TEXT, " +
                 COLUMN_EVENT_TYPE + " TEXT, " +
                 COLUMN_LAST_CHECKED + " INTEGER, " +
-                COLUMN_CONSECUTIVE_ERRORS + " INTEGER, " +
                 COLUMN_TICKETS_FOUND + " INTEGER)";
-        db.execSQL(createUrlsTable);
+        db.execSQL(createTable);
         
         // Create history table
         String createHistoryTable = "CREATE TABLE " + TABLE_HISTORY + "(" +
                 COLUMN_HISTORY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COLUMN_HISTORY_URL_ID + " INTEGER, " +
                 COLUMN_HISTORY_TIMESTAMP + " INTEGER, " +
-                COLUMN_HISTORY_MESSAGE + " TEXT, " +
-                "FOREIGN KEY(" + COLUMN_HISTORY_URL_ID + ") REFERENCES " + 
-                TABLE_URLS + "(" + COLUMN_ID + "))";
+                COLUMN_HISTORY_NOTE + " TEXT)";
         db.execSQL(createHistoryTable);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) {
-            // Add event name and date columns from version 1 to 2
+            // Add columns for event details (v1 -> v2)
             try {
                 db.execSQL("ALTER TABLE " + TABLE_URLS + " ADD COLUMN " + COLUMN_EVENT_NAME + " TEXT DEFAULT ''");
                 db.execSQL("ALTER TABLE " + TABLE_URLS + " ADD COLUMN " + COLUMN_EVENT_DATE + " TEXT DEFAULT ''");
                 Log.d(TAG, "Database upgraded from version 1 to 2");
             } catch (Exception e) {
-                Log.e(TAG, "Error upgrading database from version 1 to 2", e);
+                Log.e(TAG, "Error upgrading database from v1 to v2", e);
             }
         }
         
         if (oldVersion < 3) {
-            // Add new columns for version 3
+            // Add new columns for v3 (event type, last checked, tickets found)
             try {
                 db.execSQL("ALTER TABLE " + TABLE_URLS + " ADD COLUMN " + COLUMN_EVENT_TYPE + " TEXT DEFAULT 'other'");
                 db.execSQL("ALTER TABLE " + TABLE_URLS + " ADD COLUMN " + COLUMN_LAST_CHECKED + " INTEGER DEFAULT 0");
-                db.execSQL("ALTER TABLE " + TABLE_URLS + " ADD COLUMN " + COLUMN_CONSECUTIVE_ERRORS + " INTEGER DEFAULT 0");
                 db.execSQL("ALTER TABLE " + TABLE_URLS + " ADD COLUMN " + COLUMN_TICKETS_FOUND + " INTEGER DEFAULT 0");
                 
                 // Create history table
@@ -103,14 +93,12 @@ public class UrlDatabase extends SQLiteOpenHelper {
                         COLUMN_HISTORY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                         COLUMN_HISTORY_URL_ID + " INTEGER, " +
                         COLUMN_HISTORY_TIMESTAMP + " INTEGER, " +
-                        COLUMN_HISTORY_MESSAGE + " TEXT, " +
-                        "FOREIGN KEY(" + COLUMN_HISTORY_URL_ID + ") REFERENCES " + 
-                        TABLE_URLS + "(" + COLUMN_ID + "))";
+                        COLUMN_HISTORY_NOTE + " TEXT)";
                 db.execSQL(createHistoryTable);
                 
                 Log.d(TAG, "Database upgraded from version 2 to 3");
             } catch (Exception e) {
-                Log.e(TAG, "Error upgrading database from version 2 to 3", e);
+                Log.e(TAG, "Error upgrading database from v2 to v3", e);
             }
         }
     }
@@ -124,9 +112,8 @@ public class UrlDatabase extends SQLiteOpenHelper {
         values.put(COLUMN_EVENT_NAME, url.getEventName());
         values.put(COLUMN_EVENT_DATE, url.getEventDate());
         values.put(COLUMN_EVENT_TYPE, url.getEventType());
-        values.put(COLUMN_LAST_CHECKED, url.getLastChecked());
-        values.put(COLUMN_CONSECUTIVE_ERRORS, url.getConsecutiveErrors());
-        values.put(COLUMN_TICKETS_FOUND, url.isTicketsFound() ? 1 : 0);
+        values.put(COLUMN_LAST_CHECKED, url.getLastCheckedTimestamp());
+        values.put(COLUMN_TICKETS_FOUND, url.hasTicketsFound() ? 1 : 0);
         db.insert(TABLE_URLS, null, values);
         db.close();
     }
@@ -144,29 +131,39 @@ public class UrlDatabase extends SQLiteOpenHelper {
                 int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_FREQUENCY));
                 boolean active = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ACTIVE)) == 1;
                 
-                // Get event details with fallbacks for older database versions
+                // Get event details
                 String eventName = "";
                 String eventDate = "";
-                String eventType = "other";
+                String eventType = MonitoredUrl.EVENT_TYPE_OTHER;
                 long lastChecked = 0;
-                int consecutiveErrors = 0;
                 boolean ticketsFound = false;
                 
                 try {
                     eventName = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_NAME));
                     eventDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_DATE));
-                    eventType = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_TYPE));
-                    lastChecked = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_CHECKED));
-                    consecutiveErrors = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CONSECUTIVE_ERRORS));
-                    ticketsFound = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TICKETS_FOUND)) == 1;
+                    
+                    // Try to get new columns
+                    try {
+                        eventType = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_TYPE));
+                        lastChecked = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_CHECKED));
+                        ticketsFound = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TICKETS_FOUND)) == 1;
+                    } catch (Exception e) {
+                        // Use default values if columns don't exist yet
+                        Log.w(TAG, "Could not read new columns, using defaults", e);
+                    }
                 } catch (Exception e) {
-                    Log.w(TAG, "Could not read all columns, may be using older database version", e);
+                    Log.w(TAG, "Could not read event details columns", e);
                 }
                 
-                MonitoredUrl monitoredUrl = new MonitoredUrl(id, url, frequency, active, 
-                                                      eventName, eventDate, eventType,
-                                                      lastChecked, consecutiveErrors, ticketsFound);
-                urlList.add(monitoredUrl);
+                // Auto-detect event type if not set
+                if (eventType == null || eventType.isEmpty()) {
+                    MonitoredUrl tempUrl = new MonitoredUrl(id, url, frequency, active, eventName, eventDate);
+                    tempUrl.detectEventType();
+                    eventType = tempUrl.getEventType();
+                }
+                
+                urlList.add(new MonitoredUrl(id, url, frequency, active, 
+                    eventName, eventDate, eventType, lastChecked, ticketsFound));
             } while (cursor.moveToNext());
         }
         cursor.close();
@@ -183,92 +180,64 @@ public class UrlDatabase extends SQLiteOpenHelper {
         values.put(COLUMN_EVENT_NAME, url.getEventName());
         values.put(COLUMN_EVENT_DATE, url.getEventDate());
         values.put(COLUMN_EVENT_TYPE, url.getEventType());
-        values.put(COLUMN_LAST_CHECKED, url.getLastChecked());
-        values.put(COLUMN_CONSECUTIVE_ERRORS, url.getConsecutiveErrors());
-        values.put(COLUMN_TICKETS_FOUND, url.isTicketsFound() ? 1 : 0);
+        values.put(COLUMN_LAST_CHECKED, url.getLastCheckedTimestamp());
+        values.put(COLUMN_TICKETS_FOUND, url.hasTicketsFound() ? 1 : 0);
         db.update(TABLE_URLS, values, COLUMN_ID + " = ?", new String[]{String.valueOf(url.getId())});
         db.close();
     }
     
     public void updateEventDetails(long urlId, String eventName, String eventDate) {
-        MonitoredUrl url = getUrlById(urlId);
-        if (url != null) {
-            String eventType = url.determineEventType(eventName);
-            
-            SQLiteDatabase db = this.getWritableDatabase();
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_EVENT_NAME, eventName);
-            values.put(COLUMN_EVENT_DATE, eventDate);
-            values.put(COLUMN_EVENT_TYPE, eventType);
-            db.update(TABLE_URLS, values, COLUMN_ID + " = ?", new String[]{String.valueOf(urlId)});
-            db.close();
-            Log.d(TAG, "Updated event details for URL ID " + urlId + ": " + eventName + ", " + eventDate + ", " + eventType);
-        }
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_EVENT_NAME, eventName);
+        values.put(COLUMN_EVENT_DATE, eventDate);
+        
+        // Detect and update event type
+        MonitoredUrl tempUrl = new MonitoredUrl(urlId, "", 0, false, eventName, eventDate);
+        tempUrl.detectEventType();
+        values.put(COLUMN_EVENT_TYPE, tempUrl.getEventType());
+        
+        db.update(TABLE_URLS, values, COLUMN_ID + " = ?", new String[]{String.valueOf(urlId)});
+        db.close();
+        Log.d(TAG, "Updated event details for URL ID " + urlId + ": " + eventName + ", " + eventDate);
     }
     
-    public void updateLastChecked(long urlId, long timestamp) {
+    public void updateLastChecked(long urlId, long timestamp, boolean ticketsFound) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_LAST_CHECKED, timestamp);
+        values.put(COLUMN_TICKETS_FOUND, ticketsFound ? 1 : 0);
         db.update(TABLE_URLS, values, COLUMN_ID + " = ?", new String[]{String.valueOf(urlId)});
         db.close();
-        
-        // Broadcast an update
-        Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
-        LocalBroadcastManager.getInstance(appContext).sendBroadcast(updateIntent);
+        Log.d(TAG, "Updated last checked for URL ID " + urlId + ": " + timestamp + ", tickets found: " + ticketsFound);
     }
     
-    public void updateConsecutiveErrors(long urlId, int errors) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_CONSECUTIVE_ERRORS, errors);
-        db.update(TABLE_URLS, values, COLUMN_ID + " = ?", new String[]{String.valueOf(urlId)});
-        db.close();
-    }
-    
-    public void updateTicketsFound(long urlId, boolean found) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_TICKETS_FOUND, found ? 1 : 0);
-        db.update(TABLE_URLS, values, COLUMN_ID + " = ?", new String[]{String.valueOf(urlId)});
-        db.close();
-        
-        // If tickets are found, add to history
-        if (found) {
-            addHistoryEntry(urlId, System.currentTimeMillis(), "Tickets found!");
-        }
-        
-        // Broadcast an update
-        Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
-        LocalBroadcastManager.getInstance(appContext).sendBroadcast(updateIntent);
-    }
-    
-    public void addHistoryEntry(long urlId, long timestamp, String message) {
+    public void addTicketHistory(long urlId, long timestamp, String note) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_HISTORY_URL_ID, urlId);
         values.put(COLUMN_HISTORY_TIMESTAMP, timestamp);
-        values.put(COLUMN_HISTORY_MESSAGE, message);
+        values.put(COLUMN_HISTORY_NOTE, note);
         db.insert(TABLE_HISTORY, null, values);
         db.close();
+        Log.d(TAG, "Added ticket history for URL ID " + urlId + ": " + note);
     }
     
-    public List<TicketHistoryEntry> getHistoryForUrl(long urlId) {
+    public List<TicketHistoryEntry> getTicketHistory(long urlId) {
         List<TicketHistoryEntry> historyList = new ArrayList<>();
+        String selectQuery = "SELECT * FROM " + TABLE_HISTORY + 
+                         " WHERE " + COLUMN_HISTORY_URL_ID + " = ?" +
+                         " ORDER BY " + COLUMN_HISTORY_TIMESTAMP + " DESC";
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_HISTORY, null, 
-                               COLUMN_HISTORY_URL_ID + "=?", 
-                               new String[]{String.valueOf(urlId)}, 
-                               null, null, 
-                               COLUMN_HISTORY_TIMESTAMP + " DESC");
-        
+        Cursor cursor = db.rawQuery(selectQuery, new String[]{String.valueOf(urlId)});
+
         if (cursor.moveToFirst()) {
             do {
                 long id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_HISTORY_ID));
                 long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_HISTORY_TIMESTAMP));
-                String message = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_HISTORY_MESSAGE));
+                String note = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_HISTORY_NOTE));
                 
-                historyList.add(new TicketHistoryEntry(id, urlId, timestamp, message));
+                historyList.add(new TicketHistoryEntry(id, urlId, timestamp, note));
             } while (cursor.moveToNext());
         }
         cursor.close();
@@ -278,12 +247,11 @@ public class UrlDatabase extends SQLiteOpenHelper {
 
     public void deleteUrl(long id) {
         SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_URLS, COLUMN_ID + " = ?", new String[]{String.valueOf(id)});
         
-        // First delete any history entries for this URL
+        // Also delete history entries for this URL
         db.delete(TABLE_HISTORY, COLUMN_HISTORY_URL_ID + " = ?", new String[]{String.valueOf(id)});
         
-        // Then delete the URL itself
-        db.delete(TABLE_URLS, COLUMN_ID + " = ?", new String[]{String.valueOf(id)});
         db.close();
     }
 
@@ -299,29 +267,32 @@ public class UrlDatabase extends SQLiteOpenHelper {
                 String url = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_URL));
                 int frequency = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_FREQUENCY));
                 
-                // Get event details with fallbacks for older database versions
+                // Get event details
                 String eventName = "";
                 String eventDate = "";
-                String eventType = "other";
+                String eventType = MonitoredUrl.EVENT_TYPE_OTHER;
                 long lastChecked = 0;
-                int consecutiveErrors = 0;
                 boolean ticketsFound = false;
                 
                 try {
                     eventName = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_NAME));
                     eventDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_DATE));
-                    eventType = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_TYPE));
-                    lastChecked = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_CHECKED));
-                    consecutiveErrors = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CONSECUTIVE_ERRORS));
-                    ticketsFound = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TICKETS_FOUND)) == 1;
+                    
+                    // Try to get new columns
+                    try {
+                        eventType = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_TYPE));
+                        lastChecked = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_CHECKED));
+                        ticketsFound = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TICKETS_FOUND)) == 1;
+                    } catch (Exception e) {
+                        // Use default values if columns don't exist yet
+                        Log.w(TAG, "Could not read new columns for active URLs, using defaults");
+                    }
                 } catch (Exception e) {
-                    Log.w(TAG, "Could not read all columns, may be using older database version", e);
+                    Log.w(TAG, "Could not read event details columns", e);
                 }
                 
-                MonitoredUrl monitoredUrl = new MonitoredUrl(id, url, frequency, true, 
-                                                      eventName, eventDate, eventType,
-                                                      lastChecked, consecutiveErrors, ticketsFound);
-                urlList.add(monitoredUrl);
+                urlList.add(new MonitoredUrl(id, url, frequency, true, 
+                    eventName, eventDate, eventType, lastChecked, ticketsFound));
             } while (cursor.moveToNext());
         }
         cursor.close();
@@ -343,25 +314,29 @@ public class UrlDatabase extends SQLiteOpenHelper {
             // Get event details
             String eventName = "";
             String eventDate = "";
-            String eventType = "other";
+            String eventType = MonitoredUrl.EVENT_TYPE_OTHER;
             long lastChecked = 0;
-            int consecutiveErrors = 0;
             boolean ticketsFound = false;
             
             try {
                 eventName = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_NAME));
                 eventDate = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_DATE));
-                eventType = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_TYPE));
-                lastChecked = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_CHECKED));
-                consecutiveErrors = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CONSECUTIVE_ERRORS));
-                ticketsFound = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TICKETS_FOUND)) == 1;
+                
+                // Try to get new columns
+                try {
+                    eventType = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EVENT_TYPE));
+                    lastChecked = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_CHECKED));
+                    ticketsFound = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_TICKETS_FOUND)) == 1;
+                } catch (Exception e) {
+                    // Use default values if columns don't exist yet
+                    Log.w(TAG, "Could not read new columns for URL ID " + id + ", using defaults");
+                }
             } catch (Exception e) {
-                Log.w(TAG, "Could not read all columns, may be using older database version", e);
+                Log.w(TAG, "Could not read event details columns", e);
             }
             
             url = new MonitoredUrl(id, urlStr, frequency, active, 
-                               eventName, eventDate, eventType,
-                               lastChecked, consecutiveErrors, ticketsFound);
+                eventName, eventDate, eventType, lastChecked, ticketsFound);
         }
         cursor.close();
         db.close();
