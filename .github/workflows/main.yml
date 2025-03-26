@@ -27,8 +27,11 @@ jobs:
       - name: Show Gradle version
         run: gradle --version
       
-      - name: Build APK
-        run: gradle assembleProductionDebug --info --stacktrace
+      - name: Debug - List Java files
+        run: find . -name "*.java" -type f | xargs cat
+        
+      - name: Build APK with detailed logging
+        run: gradle assembleProductionDebug --debug
         
       - name: List APK directory
         run: find app/build/outputs -name "*.apk" | sort
