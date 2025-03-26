@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import java.util.concurrent.Executors;
@@ -110,12 +111,23 @@ public class NotificationActionReceiver extends BroadcastReceiver {
                 // Update database with event details
                 UrlDatabase.getInstance(context).updateEventDetails(urlId, eventName, eventDate);
                 
+                // Send broadcast to notify MainActivity to refresh the URL list
+                Intent refreshIntent = new Intent("com.example.tixelcheck.EVENT_DETAILS_UPDATED");
+                LocalBroadcastManager.getInstance(context).sendBroadcast(refreshIntent);
+                
                 // Show confirmation toast on the main thread
                 new Handler(Looper.getMainLooper()).post(() -> {
-                    Toast.makeText(context, "Event details updated", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Event details updated: " + eventName, Toast.LENGTH_SHORT).show();
                 });
             } else {
                 Log.d(TAG, "Could not extract event details from URL");
+                
+                // Show a toast prompting the user to add details manually
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Toast.makeText(context, 
+                        "Could not automatically extract event details. Long-press the URL to add them manually.", 
+                        Toast.LENGTH_LONG).show();
+                });
             }
         } catch (Exception e) {
             Log.e(TAG, "Error extracting event details", e);
