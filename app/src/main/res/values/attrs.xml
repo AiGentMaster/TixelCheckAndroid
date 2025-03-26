@@ -5,4 +5,5 @@
     <attr name="colorTicketsFound" format="color" />
     <attr name="dialogBackgroundColor" format="color" />
     <attr name="backgroundColor" format="color" />
+    <attr name="cardBackgroundColor" format="color" />
 </resources>
