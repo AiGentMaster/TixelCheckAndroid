@@ -7,6 +7,8 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -21,7 +23,7 @@ public class EditUrlDialog {
     private final EditUrlDialogListener listener;
     
     public interface EditUrlDialogListener {
-        void onUrlEdited(MonitoredUrl url, String newUrl, int newFrequency, boolean isActive);
+        void onUrlEdited(MonitoredUrl url, String newUrl, int newFrequency, boolean isActive, String eventType);
     }
     
     public EditUrlDialog(Context context, MonitoredUrl url, EditUrlDialogListener listener) {
@@ -42,6 +44,10 @@ public class EditUrlDialog {
         final TextView textFrequency = view.findViewById(R.id.text_frequency);
         final SeekBar seekFrequency = view.findViewById(R.id.seek_frequency);
         final Switch switchActive = view.findViewById(R.id.switch_active);
+        final RadioGroup radioEventType = view.findViewById(R.id.radio_event_type);
+        final RadioButton radioConcert = view.findViewById(R.id.radio_concert);
+        final RadioButton radioSports = view.findViewById(R.id.radio_sports);
+        final RadioButton radioTheater = view.findViewById(R.id.radio_theater);
         Button buttonSave = view.findViewById(R.id.button_save);
         Button buttonCancel = view.findViewById(R.id.button_cancel);
         
@@ -50,6 +56,22 @@ public class EditUrlDialog {
         seekFrequency.setProgress(getSeekbarProgressFromFrequency(url.getFrequency()));
         textFrequency.setText("Check every " + url.getFrequency() + " minutes");
         switchActive.setChecked(url.isActive());
+        
+        // Set initial event type selection
+        switch (url.getEventType()) {
+            case MonitoredUrl.EVENT_TYPE_CONCERT:
+                radioConcert.setChecked(true);
+                break;
+            case MonitoredUrl.EVENT_TYPE_SPORTS:
+                radioSports.setChecked(true);
+                break;
+            case MonitoredUrl.EVENT_TYPE_THEATER:
+                radioTheater.setChecked(true);
+                break;
+            default:
+                // If none match, default to concert
+                radioConcert.setChecked(true);
+        }
         
         // Update the frequency text when seekbar changes
         seekFrequency.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -80,9 +102,20 @@ public class EditUrlDialog {
             // Get active status
             boolean isActive = switchActive.isChecked();
             
+            // Get selected event type
+            String eventType = MonitoredUrl.EVENT_TYPE_OTHER;
+            int selectedId = radioEventType.getCheckedRadioButtonId();
+            if (selectedId == R.id.radio_concert) {
+                eventType = MonitoredUrl.EVENT_TYPE_CONCERT;
+            } else if (selectedId == R.id.radio_sports) {
+                eventType = MonitoredUrl.EVENT_TYPE_SPORTS;
+            } else if (selectedId == R.id.radio_theater) {
+                eventType = MonitoredUrl.EVENT_TYPE_THEATER;
+            }
+            
             // Notify listener and close dialog
             if (listener != null) {
-                listener.onUrlEdited(url, newUrl, frequency, isActive);
+                listener.onUrlEdited(url, newUrl, frequency, isActive, eventType);
             }
             dialog.dismiss();
         });
