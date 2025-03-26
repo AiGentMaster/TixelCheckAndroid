@@ -19,30 +19,12 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
           
-      - name: Check for gradle wrapper jar
-        run: |
-          if [ ! -f ./gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Gradle wrapper JAR is missing. Creating directory if needed."
-            mkdir -p ./gradle/wrapper/
-            echo "Downloading Gradle wrapper JAR..."
-            curl -L -o ./gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v7.2.0/gradle/wrapper/gradle-wrapper.jar
-          fi
-          
-      - name: Verify gradlew can run
-        run: |
-          ./gradlew -v || echo "Gradle wrapper version check failed, but continuing"
-          
-      - name: Use Gradle directly instead of wrapper
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 7.2
-          
-      - name: Clean with Gradle
-        run: gradle clean
-        
+      - name: Show Gradle version
+        run: gradle --version
+      
       - name: Debug project structure
         run: |
           echo "Current directory structure:"
@@ -52,7 +34,7 @@ jobs:
           echo "\nManifest file:"
           find . -name "AndroidManifest.xml" | sort
       
-      - name: Build with Gradle
+      - name: Build APK
         run: gradle assembleProductionDebug --info --stacktrace
         
       - name: Upload Debug APK
