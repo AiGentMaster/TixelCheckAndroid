@@ -3,7 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="?attr/dialogBackgroundColor">
 
     <TextView
         android:layout_width="match_parent"
@@ -26,6 +27,46 @@
         android:hint="Enter URL to monitor"
         android:inputType="textUri"
         android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Event Type"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/radio_event_type"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/radio_concert"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Concert"
+            android:drawableStart="@drawable/ic_concert"
+            android:drawablePadding="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <RadioButton
+            android:id="@+id/radio_sports"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sports"
+            android:drawableStart="@drawable/ic_sports"
+            android:drawablePadding="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <RadioButton
+            android:id="@+id/radio_theater"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Theater"
+            android:drawableStart="@drawable/ic_theater"
+            android:drawablePadding="4dp" />
+    </RadioGroup>
 
     <TextView
         android:layout_width="match_parent"
