@@ -2,6 +2,7 @@ package com.example.tixelcheck;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -40,6 +41,7 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
     public void onBindViewHolder(@NonNull UrlViewHolder holder, int position) {
         MonitoredUrl url = urlList.get(position);
         CardView cardView = (CardView) holder.itemView;
+        Resources resources = context.getResources();
         
         // Set the URL text
         holder.textUrl.setText(url.getUrl());
@@ -78,28 +80,26 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
         }
         
         // Set card color based on status
+        int textColor;
         if (url.hasTicketsFound()) {
             // Green for tickets found
             cardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.ticketsFoundGreen));
-            holder.textUrl.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textFrequency.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textLastChecked.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textEventDetails.setTextColor(ContextCompat.getColor(context, android.R.color.white));
+            textColor = ContextCompat.getColor(context, android.R.color.white);
         } else if (url.isActive()) {
             // Blue for active
             cardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.activeBlue));
-            holder.textUrl.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textFrequency.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textLastChecked.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textEventDetails.setTextColor(ContextCompat.getColor(context, android.R.color.white));
+            textColor = ContextCompat.getColor(context, android.R.color.white);
         } else {
             // Grey for inactive
             cardView.setCardBackgroundColor(ContextCompat.getColor(context, R.color.inactiveGrey));
-            holder.textUrl.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textFrequency.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textLastChecked.setTextColor(ContextCompat.getColor(context, android.R.color.white));
-            holder.textEventDetails.setTextColor(ContextCompat.getColor(context, android.R.color.white));
+            textColor = ContextCompat.getColor(context, android.R.color.white);
         }
+        
+        // Apply text color
+        holder.textUrl.setTextColor(textColor);
+        holder.textFrequency.setTextColor(textColor);
+        holder.textLastChecked.setTextColor(textColor);
+        holder.textEventDetails.setTextColor(textColor);
         
         // Set up the active switch
         holder.switchActive.setChecked(url.isActive());
@@ -179,7 +179,7 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
     private void showEditUrlDialog(int position) {
         MonitoredUrl url = urlList.get(position);
         
-        EditUrlDialog dialog = new EditUrlDialog(context, url, (originalUrl, newUrl, newFrequency, isActive) -> {
+        EditUrlDialog dialog = new EditUrlDialog(context, url, (originalUrl, newUrl, newFrequency, isActive, eventType) -> {
             // Cancel old alarm if URL or frequency changed
             if (!originalUrl.getUrl().equals(newUrl) || originalUrl.getFrequency() != newFrequency || !isActive) {
                 TicketCheckerAlarm.cancelAlarm(context, originalUrl.getId());
@@ -193,7 +193,7 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
                 isActive,
                 originalUrl.getEventName(),
                 originalUrl.getEventDate(),
-                originalUrl.getEventType(),
+                eventType,
                 originalUrl.getLastCheckedTimestamp(),
                 originalUrl.hasTicketsFound()
             );
@@ -201,7 +201,8 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             // Check if anything actually changed
             boolean changed = !originalUrl.getUrl().equals(newUrl) ||
                              originalUrl.getFrequency() != newFrequency ||
-                             originalUrl.isActive() != isActive;
+                             originalUrl.isActive() != isActive ||
+                             !originalUrl.getEventType().equals(eventType);
             
             if (changed) {
                 // Update database and UI
