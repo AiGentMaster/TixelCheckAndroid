@@ -1,17 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TixelCheck</string>
-    <string name="add_url">Add URL</string>
+    <string name="add_url">Add Tixel URL</string>
+    <string name="enter_url">Enter Tixel URL</string>
+    <string name="frequency">Check frequency</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
     <string name="test_alert">Test Alert</string>
-    <string name="tickets_available">Tickets Available!</string>
-    <string name="test_alert_title">TEST ALERT: Tickets Available!</string>
-    <string name="test_alert_content">This is a test alert. A real alert will look like this when tickets are found.</string>
-    <string name="enter_url">Enter a new Tixel URL to Monitor</string>
-    <string name="url_hint">Paste URL here</string>
-    <string name="select_frequency">Select scan frequency</string>
-    <string name="active">Active</string>
-    <string name="delete">Delete</string>
-    <string name="add">Add</string>
+    <string name="tickets_found">Tickets Found!</string>
     <string name="open_website">Open Website</string>
     <string name="stop_alarm">Stop Alarm</string>
 </resources>
