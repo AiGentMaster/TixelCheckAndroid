@@ -17,11 +17,32 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
           
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-        
-      - name: Regenerate Gradle Wrapper
-        run: ./gradlew wrapper --gradle-version 7.4 --distribution-type bin
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 7.4
+          
+      - name: Generate Gradle Wrapper Files
+        run: |
+          # Create the wrapper directory if it doesn't exist
+          mkdir -p gradle/wrapper
+          
+          # Download the latest gradle-wrapper.jar file
+          curl -o gradle/wrapper/gradle-wrapper.jar https://repo.maven.apache.org/maven2/org/gradle/gradle-wrapper/7.4/gradle-wrapper-7.4.jar
+          
+          # Create a proper gradle-wrapper.properties file
+          echo 'distributionBase=GRADLE_USER_HOME' > gradle/wrapper/gradle-wrapper.properties
+          echo 'distributionPath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-bin.zip' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'zipStoreBase=GRADLE_USER_HOME' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'zipStorePath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
+          
+          # Download the latest gradlew and gradlew.bat scripts
+          curl -o gradlew https://raw.githubusercontent.com/gradle/gradle/v7.4.0/gradlew
+          curl -o gradlew.bat https://raw.githubusercontent.com/gradle/gradle/v7.4.0/gradlew.bat
+          
+          # Make gradlew executable
+          chmod +x gradlew
         
       - name: Commit and push changes
         run: |
