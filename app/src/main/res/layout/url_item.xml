@@ -24,6 +24,16 @@
             android:ellipsize="end" />
 
         <TextView
+            android:id="@+id/text_event_details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="15sp"
+            android:textColor="#4CAF50"
+            android:textStyle="italic"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/text_frequency"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
