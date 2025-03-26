@@ -5,7 +5,7 @@ buildscript {
         jcenter() // For older dependencies
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.0.4'
+        classpath 'com.android.tools.build:gradle:4.2.2' // Downgraded to be compatible with Gradle 6.7.1
     }
 }
 
