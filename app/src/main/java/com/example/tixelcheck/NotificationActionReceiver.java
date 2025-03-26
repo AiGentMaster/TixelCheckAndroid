@@ -4,8 +4,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import java.util.concurrent.Executors;
 
 /**
  * Handles actions performed on notifications, such as opening URLs
@@ -28,13 +33,22 @@ public class NotificationActionReceiver extends BroadcastReceiver {
         switch (action) {
             case "com.example.tixelcheck.OPEN_URL":
                 String url = intent.getStringExtra("url");
-                Log.d(TAG, "URL from intent: " + url);
+                long urlId = intent.getLongExtra("url_id", -1);
+                Log.d(TAG, "URL from intent: " + url + ", URL ID: " + urlId);
                 
                 if (url != null && !url.isEmpty()) {
                     // Ensure URL has proper scheme
                     if (!url.startsWith("http://") && !url.startsWith("https://")) {
                         url = "https://" + url;
                         Log.d(TAG, "Added https scheme to URL: " + url);
+                    }
+                    
+                    // Extract event details in background if URL ID is provided
+                    final String finalUrl = url;
+                    if (urlId > 0) {
+                        Executors.newSingleThreadExecutor().execute(() -> {
+                            extractEventDetails(context, finalUrl, urlId);
+                        });
                     }
                     
                     try {
@@ -71,6 +85,40 @@ public class NotificationActionReceiver extends BroadcastReceiver {
             default:
                 Log.d(TAG, "Unknown action: " + action);
                 break;
+        }
+    }
+    
+    /**
+     * Extract event details from the URL and update database
+     */
+    private void extractEventDetails(Context context, String url, long urlId) {
+        try {
+            Log.d(TAG, "Extracting event details from URL: " + url);
+            
+            Document doc = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                    .timeout(15000)
+                    .get();
+            
+            // Use the same extraction methods as in TicketCheckerAlarm
+            String eventName = TicketCheckerAlarm.extractEventName(doc);
+            String eventDate = TicketCheckerAlarm.extractEventDate(doc);
+            
+            if (!eventName.isEmpty() || !eventDate.isEmpty()) {
+                Log.d(TAG, "Found event details - Name: " + eventName + ", Date: " + eventDate);
+                
+                // Update database with event details
+                UrlDatabase.getInstance(context).updateEventDetails(urlId, eventName, eventDate);
+                
+                // Show confirmation toast on the main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Toast.makeText(context, "Event details updated", Toast.LENGTH_SHORT).show();
+                });
+            } else {
+                Log.d(TAG, "Could not extract event details from URL");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting event details", e);
         }
     }
 }
