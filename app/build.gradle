@@ -1,4 +1,6 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
     compileSdkVersion 31
@@ -18,8 +20,8 @@ android {
             if (project.hasProperty('android.injected.signing.store.file')) {
                 storeFile file(project.getProperty('android.injected.signing.store.file'))
                 storePassword project.getProperty('android.injected.signing.store.password')
-                keyAlias project.getProperty('android.injected.signing.key.alias')
-                keyPassword project.getProperty('android.injected.signing.key.password')
+                keyAlias project.getProperty('android.injected.signing.key.alias'))
+                keyPassword project.getProperty('android.injected.signing.key.password'))
             }
         }
     }
@@ -40,6 +42,8 @@ android {
     lintOptions {
         abortOnError false
     }
+    
+    namespace "com.example.tixelcheck"
 }
 
 dependencies {
