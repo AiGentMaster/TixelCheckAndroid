@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base colors -->
-    <color name="colorPrimary">#2196F3</color>
-    <color name="colorPrimaryDark">#1976D2</color>
-    <color name="colorAccent">#FF4081</color>
-    <color name="colorAccentDark">#E91E63</color>
+    <color name="primary">#00BCD4</color>
+    <color name="primary_dark">#0097A7</color>
+    <color name="accent">#FF5722</color>
+    <color name="accent_dark">#E64A19</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
     
-    <!-- Status colors -->
-    <color name="activeBlue">#1976D2</color>
-    <color name="inactiveGrey">#9E9E9E</color>
-    <color name="ticketsFoundGreen">#4CAF50</color>
-    
-    <!-- Event type colors -->
-    <color name="concertPurple">#9C27B0</color>
-    <color name="sportOrange">#FF9800</color>
-    <color name="theaterRed">#F44336</color>
-    <color name="otherTeal">#009688</color>
+    <!-- Theme colors -->
+    <color name="colorPrimary">@color/primary</color>
+    <color name="colorPrimaryDark">@color/primary_dark</color>
+    <color name="colorAccent">@color/accent</color>
+    <color name="colorActive">#4CAF50</color>
+    <color name="colorInactive">#9E9E9E</color>
+    <color name="colorTicketsFound">#F44336</color>
+    <color name="dialogBackgroundColor">#FAFAFA</color>
 </resources>
