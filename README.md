@@ -2,7 +2,7 @@
 
 An Android application that monitors Tixel ticket URLs and alerts you when tickets become available.
 
-**Note: This project has been thoroughly reviewed and fixed with updated dependencies and improved build configuration. Attempting a new build with simplified configuration.**
+**Note: This project has been thoroughly reviewed and fixed with updated dependencies and improved build configuration. Now using direct Gradle installation rather than wrapper.**
 
 ## Features
 
@@ -17,36 +17,38 @@ An Android application that monitors Tixel ticket URLs and alerts you when ticke
 
 TixelCheck is set up with GitHub Actions to automatically build APKs when code is pushed to the repository. You can download the latest APK from the Releases section of this repository.
 
-### Important Note About Gradle Wrapper
+### Manual Build Instructions
 
-Due to GitHub's file size limitations, the Gradle wrapper JAR file might not be properly included in this repository. Before building the app, you should regenerate the Gradle wrapper:
+To build the app manually:
 
-1. Clone this repository:
+1. Install Gradle 7.2:
+   ```
+   # On Ubuntu
+   sudo apt install gradle
+   
+   # On macOS
+   brew install gradle
+   
+   # On Windows
+   choco install gradle
+   ```
+
+2. Clone this repository:
    ```
    git clone https://github.com/AiGentMaster/TixelCheckAndroid.git
    ```
 
-2. Navigate to the project directory:
+3. Navigate to the project directory:
    ```
    cd TixelCheckAndroid
    ```
 
-3. Regenerate the Gradle wrapper:
+4. Build the debug APK:
    ```
-   gradle wrapper --gradle-version 7.2 --distribution-type all
-   ```
-   Note: You need to have Gradle installed on your system to run this command. If you don't have it installed, you can download it from https://gradle.org/install/
-
-### Manual Build Instructions
-
-After regenerating the Gradle wrapper, you can build the app manually:
-
-1. Build the debug APK:
-   ```
-   ./gradlew assembleProductionDebug
+   gradle assembleProductionDebug
    ```
 
-2. The APK will be generated at:
+5. The APK will be generated at:
    ```
    app/build/outputs/apk/production/debug/app-production-debug.apk
    ```
@@ -92,11 +94,11 @@ TixelCheck requires the following permissions:
 - **No Notifications**: Ensure notifications are enabled for TixelCheck in system settings
 - **App Not Running in Background**: Disable battery optimization for TixelCheck
 - **Alarms Not Working**: Some Android manufacturers (Xiaomi, Huawei, etc.) have aggressive battery management - add TixelCheck to protected apps list
-- **Build Errors**: Make sure you've regenerated the Gradle wrapper as described in the building instructions
+- **Build Errors**: Make sure you have the correct version of Gradle installed
 
 ## Recent Fixes
 
-- Updated GitHub Actions workflow with latest action versions
+- Updated GitHub Actions workflow to use Gradle directly instead of wrapper
 - Updated Gradle to version 7.2 for better compatibility
 - Simplified build configuration to focus on core functionality
 - Updated Android Gradle Plugin to version 7.0.4
