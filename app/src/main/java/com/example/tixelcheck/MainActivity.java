@@ -7,6 +7,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
@@ -19,20 +21,29 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
+    private static final String PREFS_NAME = "TixelCheckPrefs";
+    private static final String THEME_KEY = "app_theme";
+    
     private RecyclerView recyclerView;
     private UrlAdapter adapter;
     private List<MonitoredUrl> urlList;
@@ -57,8 +68,16 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Apply theme before setting content view
+        applyTheme();
+        
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        // Set action bar title
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("Tixel Check");
+        }
         
         // Stop any active alarm when the app is opened
         stopActiveAlarm();
@@ -114,6 +133,66 @@ public class MainActivity extends AppCompatActivity {
         // Register for URL updates broadcasts
         LocalBroadcastManager.getInstance(this).registerReceiver(
             urlUpdatesReceiver, new IntentFilter("com.example.tixelcheck.URL_UPDATED"));
+    }
+    
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
+    }
+    
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_toggle_theme) {
+            // Toggle dark mode
+            toggleDarkMode();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+    
+    /**
+     * Toggles between light and dark mode
+     */
+    private void toggleDarkMode() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int currentTheme = prefs.getInt(THEME_KEY, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        
+        // Toggle between light and dark
+        int newTheme;
+        if (currentTheme == AppCompatDelegate.MODE_NIGHT_YES) {
+            newTheme = AppCompatDelegate.MODE_NIGHT_NO;
+            Toast.makeText(this, "Light Mode Enabled", Toast.LENGTH_SHORT).show();
+        } else {
+            newTheme = AppCompatDelegate.MODE_NIGHT_YES;
+            Toast.makeText(this, "Dark Mode Enabled", Toast.LENGTH_SHORT).show();
+        }
+        
+        // Save the new theme setting
+        prefs.edit().putInt(THEME_KEY, newTheme).apply();
+        
+        // Apply the new theme
+        AppCompatDelegate.setDefaultNightMode(newTheme);
+        
+        // Recreate activity to apply the theme
+        recreate();
+    }
+    
+    /**
+     * Apply the saved theme on app start
+     */
+    private void applyTheme() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        int themeMode = prefs.getInt(THEME_KEY, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        AppCompatDelegate.setDefaultNightMode(themeMode);
+    }
+    
+    /**
+     * Get the current UI mode (dark or light)
+     */
+    private boolean isDarkModeActive() {
+        int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
     }
     
     @Override
@@ -249,7 +328,7 @@ public class MainActivity extends AppCompatActivity {
         
         // Trigger vibration
         Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (vibrator.hasVibrator()) {
+        if (vibrator != null && vibrator.hasVibrator()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(VibrationEffect.createWaveform(new long[] { 0, 1000, 500, 1000 }, -1));
             } else {
