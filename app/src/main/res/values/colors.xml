@@ -7,6 +7,12 @@
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     
+    <!-- Category colors -->
+    <color name="concertPurple">#9C27B0</color>
+    <color name="otherTeal">#009688</color>
+    <color name="sportOrange">#FF9800</color>
+    <color name="theaterRed">#F44336</color>
+    
     <!-- Theme colors -->
     <color name="colorPrimary">@color/primary</color>
     <color name="colorPrimaryDark">@color/primary_dark</color>
