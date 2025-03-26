@@ -4,7 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.0.4'
+        classpath 'com.android.tools.build:gradle:7.2.2'
+        classpath 'org.jacoco:org.jacoco.core:0.8.10'
     }
 }
 
@@ -15,6 +16,26 @@ allprojects {
     }
 }
 
+// Apply JaCoCo configuration to all projects
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.apply from: '../jacoco.gradle'
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+// Configure Gradle build cache
+allprojects {
+    buildscript {
+        buildscript {
+            configurations.all {
+                resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+            }
+        }
+    }
 }
