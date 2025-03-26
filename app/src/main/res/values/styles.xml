@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Base application theme -->
-    <style name="Theme.TixelCheck" parent="Theme.MaterialComponents.Light.DarkActionBar">
-        <!-- Primary brand color -->
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_dark</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color -->
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorSecondaryVariant">@color/accent_dark</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        
+        <!-- Custom theme attributes -->
+        <item name="colorActive">@color/colorActive</item>
+        <item name="colorInactive">@color/colorInactive</item>
+        <item name="colorTicketsFound">@color/colorTicketsFound</item>
+        <item name="dialogBackgroundColor">@color/dialogBackgroundColor</item>
     </style>
 </resources>
