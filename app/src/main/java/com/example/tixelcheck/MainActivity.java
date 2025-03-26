@@ -16,6 +16,7 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private RecyclerView recyclerView;
     private UrlAdapter adapter;
     private List<MonitoredUrl> urlList;
@@ -36,6 +38,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        // Stop any active alarm when the app is opened
+        stopActiveAlarm();
 
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -80,6 +85,35 @@ public class MainActivity extends AppCompatActivity {
         
         // Ensure all active URLs have alarms set
         resetActiveAlarms();
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Also stop any active alarm when the app resumes
+        stopActiveAlarm();
+    }
+    
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // Stop active alarm when app is brought to front by a notification click
+        stopActiveAlarm();
+    }
+    
+    /**
+     * Stops any active alarm sound
+     */
+    private void stopActiveAlarm() {
+        Log.d(TAG, "Stopping active alarm from MainActivity");
+        TicketCheckerAlarm.stopAlarmSound();
+        
+        // Also clear the notification for the active alarm
+        if (TicketCheckerAlarm.activeAlarmUrlId > 0) {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.cancel((int) TicketCheckerAlarm.activeAlarmUrlId);
+            TicketCheckerAlarm.activeAlarmUrlId = 0;
+        }
     }
     
     /**
