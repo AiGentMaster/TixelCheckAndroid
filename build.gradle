@@ -13,6 +13,13 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Force all dependencies to use the same version of Kotlin
+    configurations.all {
+        resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.10'
+        resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10'
+        resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.10'
+    }
 }
 
 task clean(type: Delete) {
