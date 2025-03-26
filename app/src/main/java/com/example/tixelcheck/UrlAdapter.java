@@ -67,6 +67,10 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
                 TicketCheckerAlarm.cancelAlarm(context, url.getId());
                 Toast.makeText(context, "Monitoring disabled", Toast.LENGTH_SHORT).show();
             }
+            
+            // Broadcast URL update
+            Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+            LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent);
         });
 
         // Set up delete button
@@ -81,6 +85,10 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             notifyItemRangeChanged(position, urlList.size());
             
             Toast.makeText(context, "URL removed", Toast.LENGTH_SHORT).show();
+            
+            // Broadcast URL update
+            Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+            LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent);
         });
         
         // Set up URL editing with normal click (opens EditUrlDialog)
@@ -108,53 +116,39 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
         
         EditUrlDialog dialog = new EditUrlDialog(context, url, (originalUrl, newUrl, newFrequency, isActive) -> {
             // Cancel old alarm if URL or frequency changed
-            if (!originalUrl.getUrl().equals(newUrl) || originalUrl.getFrequency() != newFrequency) {
+            if (!originalUrl.getUrl().equals(newUrl) || originalUrl.getFrequency() != newFrequency || !isActive) {
                 TicketCheckerAlarm.cancelAlarm(context, originalUrl.getId());
             }
             
             // Update URL properties
-            originalUrl.setActive(isActive);
+            MonitoredUrl updatedUrl = new MonitoredUrl(
+                originalUrl.getId(),
+                newUrl,
+                newFrequency,
+                isActive,
+                originalUrl.getEventName(),
+                originalUrl.getEventDate()
+            );
             
-            // Only update URL in database if something changed
-            boolean changed = false;
+            // Check if anything actually changed
+            boolean changed = !originalUrl.getUrl().equals(newUrl) ||
+                             originalUrl.getFrequency() != newFrequency ||
+                             originalUrl.isActive() != isActive;
             
-            if (!originalUrl.getUrl().equals(newUrl)) {
-                // URL changed
-                changed = true;
-                originalUrl = new MonitoredUrl(
-                    originalUrl.getId(),
-                    newUrl,
-                    newFrequency,
-                    isActive,
-                    originalUrl.getEventName(),
-                    originalUrl.getEventDate()
-                );
-                urlList.set(position, originalUrl);
-            } else if (originalUrl.getFrequency() != newFrequency) {
-                // Only frequency changed
-                changed = true;
-                originalUrl = new MonitoredUrl(
-                    originalUrl.getId(),
-                    originalUrl.getUrl(),
-                    newFrequency,
-                    isActive,
-                    originalUrl.getEventName(),
-                    originalUrl.getEventDate()
-                );
-                urlList.set(position, originalUrl);
-            }
-            
-            if (changed || isActive != originalUrl.isActive()) {
-                // Update database
-                UrlDatabase.getInstance(context).updateUrl(originalUrl);
-                
-                // Update UI
+            if (changed) {
+                // Update database and UI
+                UrlDatabase.getInstance(context).updateUrl(updatedUrl);
+                urlList.set(position, updatedUrl);
                 notifyItemChanged(position);
                 
                 // Set new alarm if active
                 if (isActive) {
-                    TicketCheckerAlarm.setAlarm(context, originalUrl);
+                    TicketCheckerAlarm.setAlarm(context, updatedUrl);
                 }
+                
+                // Broadcast URL update
+                Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+                LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent);
                 
                 Toast.makeText(context, "URL settings updated", Toast.LENGTH_SHORT).show();
             }
