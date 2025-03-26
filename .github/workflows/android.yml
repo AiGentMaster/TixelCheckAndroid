@@ -13,23 +13,31 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Set up JDK 11
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
         cache: gradle
 
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+      with:
+        gradle-version: 7.4
+        
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
+    - name: Clean build directory
+      run: ./gradlew clean
+        
     - name: Build debug APK
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug --stacktrace
       
     - name: Upload debug APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tixelcheck-debug
         path: app/build/outputs/apk/debug/app-debug.apk
@@ -41,23 +49,37 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: Set up JDK 11
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
         cache: gradle
+
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+      with:
+        gradle-version: 7.4
         
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+      
+    - name: Clean build directory
+      run: ./gradlew clean
       
     - name: Decode Keystore
       env:
         ENCODED_KEYSTORE: ${{ secrets.SIGNING_KEY }}
       run: |
-        echo $ENCODED_KEYSTORE | base64 -d > keystore.jks
+        if [ -n "$ENCODED_KEYSTORE" ]; then
+          echo $ENCODED_KEYSTORE | base64 -d > keystore.jks
+          echo "Keystore decoded successfully"
+        else
+          echo "No keystore provided, skipping decoding"
+          touch keystore.jks
+        fi
       
     - name: Build and sign release APK
       env:
@@ -65,28 +87,37 @@ jobs:
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
-        ./gradlew assembleRelease \
-          -Pandroid.injected.signing.store.file=../keystore.jks \
-          -Pandroid.injected.signing.store.password=$KEY_STORE_PASSWORD \
-          -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-          -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+        if [ -n "$KEY_STORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ] && [ -n "$KEY_ALIAS" ]; then
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=../keystore.jks \
+            -Pandroid.injected.signing.store.password=$KEY_STORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$KEY_PASSWORD \
+            --stacktrace
+        else
+          echo "Missing signing configuration, building unsigned APK"
+          ./gradlew assembleRelease --stacktrace
+        fi
         
     - name: Upload signed release APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tixelcheck-release
-        path: app/build/outputs/apk/release/app-release.apk
+        path: |
+          app/build/outputs/apk/release/*.apk
+          app/build/outputs/bundle/release/*.aab
         
     - name: Create GitHub Release
       id: create_release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       with:
         tag_name: v${{ github.run_number }}
         name: TixelCheck v${{ github.run_number }}
         draft: false
         prerelease: false
         files: |
-          app/build/outputs/apk/release/app-release.apk
+          app/build/outputs/apk/release/*.apk
         body: |
           TixelCheck v${{ github.run_number }}
           
