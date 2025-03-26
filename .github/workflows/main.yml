@@ -35,3 +35,39 @@ jobs:
         
       - name: List APK directory
         run: find app/build/outputs -name "*.apk" | sort
+        
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tixelcheck-debug
+          path: app/build/outputs/apk/production/debug/app-production-debug*.apk
+          if-no-files-found: warn
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: TixelCheck v1.0.${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: |
+            app/build/outputs/apk/production/debug/app-production-debug*.apk
+          body: |
+            ## TixelCheck v1.0.${{ github.run_number }}
+            
+            **New in this version:**
+            - Improved performance
+            - Bug fixes
+            - Enhanced reliability
+            
+            **Installation:**
+            1. Download the APK file
+            2. Allow installation from unknown sources in your device settings
+            3. Install the APK
+            
+            **Features:**
+            - Monitor Tixel ticket pages for availability
+            - Customizable checking frequency (1, 2, 5, 10, 30, 60 minutes)
+            - Loud alerts when tickets become available
+            - Direct link to ticket pages from notifications
