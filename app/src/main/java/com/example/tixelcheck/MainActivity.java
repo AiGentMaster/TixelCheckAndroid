@@ -45,6 +45,15 @@ public class MainActivity extends AppCompatActivity {
             refreshUrlList();
         }
     };
+    
+    // Define a broadcast receiver for URL updates
+    private BroadcastReceiver urlUpdatesReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Refresh the URL list to show updated URLs
+            refreshUrlList();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +110,10 @@ public class MainActivity extends AppCompatActivity {
         // Register for event details update broadcasts
         LocalBroadcastManager.getInstance(this).registerReceiver(
             eventDetailsReceiver, new IntentFilter("com.example.tixelcheck.EVENT_DETAILS_UPDATED"));
+        
+        // Register for URL updates broadcasts
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+            urlUpdatesReceiver, new IntentFilter("com.example.tixelcheck.URL_UPDATED"));
     }
     
     @Override
@@ -123,8 +136,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Unregister broadcast receiver
+        // Unregister broadcast receivers
         LocalBroadcastManager.getInstance(this).unregisterReceiver(eventDetailsReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(urlUpdatesReceiver);
     }
     
     /**
