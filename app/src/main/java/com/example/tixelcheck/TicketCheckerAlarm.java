@@ -7,7 +7,6 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
@@ -21,11 +20,16 @@ import android.os.Vibrator;
 import android.provider.Settings;
 import android.util.Log;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executors;
 
 public class TicketCheckerAlarm extends BroadcastReceiver {
@@ -36,11 +40,10 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     private static MediaPlayer activeAlarmPlayer;
     public static long activeAlarmUrlId;
     
-    // Maximum number of retry attempts
-    private static final int MAX_RETRY_ATTEMPTS = 5;
-    
-    // Base backoff time in milliseconds (30 seconds)
-    private static final long BASE_BACKOFF_MS = 30 * 1000;
+    // For exponential backoff
+    private static final int MAX_RETRY_COUNT = 5; 
+    private static final int BASE_RETRY_DELAY = 5000; // 5 seconds
+    private static Map<Long, Integer> retryCountMap = new HashMap<>();
     
     // Method to stop an active alarm sound
     public static void stopAlarmSound() {
@@ -75,15 +78,6 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         
         // Convert frequency from minutes to milliseconds
         long intervalMillis = url.getFrequency() * 60 * 1000;
-        
-        // If we're in a backoff scenario, adjust the interval using exponential backoff
-        if (url.getConsecutiveErrors() > 0) {
-            long backoffMillis = calculateBackoffMillis(url.getConsecutiveErrors());
-            intervalMillis = Math.min(intervalMillis, backoffMillis); // Use the shorter of the two
-            Log.d(TAG, "Using backoff interval of " + (backoffMillis / 1000) + " seconds for URL ID " + 
-                 url.getId() + " (consecutive errors: " + url.getConsecutiveErrors() + ")");
-        }
-        
         long triggerAtMillis = SystemClock.elapsedRealtime() + intervalMillis;
         
         // Schedule alarm
@@ -99,27 +93,61 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                     pendingIntent);
         }
         
-        Log.d(TAG, "Alarm set for URL: " + url.getUrl() + " with frequency: " + 
-             (intervalMillis / 1000) + " seconds (normal: " + url.getFrequency() + " minutes)");
+        Log.d(TAG, "Alarm set for URL: " + url.getUrl() + " with frequency: " + url.getFrequency() + " minutes");
     }
-
+    
     /**
-     * Calculate backoff time using exponential backoff with jitter
+     * Set an immediate retry alarm with exponential backoff
      */
-    private static long calculateBackoffMillis(int consecutiveErrors) {
-        // Exponential backoff: 2^retryCount * base time, capped at 30 minutes
-        double exponentialFactor = Math.pow(2, Math.min(consecutiveErrors, 6));
-        long backoffMs = (long) (BASE_BACKOFF_MS * exponentialFactor);
+    private static void setRetryAlarm(Context context, MonitoredUrl url) {
+        // Get current retry count or initialize to 0
+        int retryCount = retryCountMap.getOrDefault(url.getId(), 0);
         
-        // Cap at 30 minutes (1800000 ms)
-        backoffMs = Math.min(backoffMs, 1800000);
+        // Check if we've reached the maximum retry count
+        if (retryCount >= MAX_RETRY_COUNT) {
+            Log.d(TAG, "Maximum retry count reached for URL ID " + url.getId() + ", going back to normal schedule");
+            retryCountMap.remove(url.getId());
+            setAlarm(context, url);
+            return;
+        }
         
-        // Add jitter (±15%)
-        double jitter = 0.15;
-        double randomFactor = 1.0 - jitter + (Math.random() * jitter * 2);
-        backoffMs = (long)(backoffMs * randomFactor);
+        // Calculate exponential backoff delay
+        long delay = BASE_RETRY_DELAY * (long) Math.pow(2, retryCount);
         
-        return backoffMs;
+        // Increment and store retry count
+        retryCount++;
+        retryCountMap.put(url.getId(), retryCount);
+        
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(context, TicketCheckerAlarm.class);
+        intent.putExtra("url_id", url.getId());
+        intent.putExtra("url", url.getUrl());
+        intent.putExtra("retry", true);
+        
+        // Create a unique pending intent ID based on URL ID and retry count
+        int requestCode = (int) url.getId() * 1000 + retryCount;
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, 
+                requestCode, 
+                intent, 
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        
+        // Set alarm with the calculated delay
+        long triggerAtMillis = SystemClock.elapsedRealtime() + delay;
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent);
+        } else {
+            alarmManager.setExact(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent);
+        }
+        
+        Log.d(TAG, "Retry alarm #" + retryCount + " set for URL ID " + url.getId() + " with delay " + (delay / 1000) + " seconds");
     }
 
     public static void cancelAlarm(Context context, long urlId) {
@@ -133,6 +161,20 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         
         alarmManager.cancel(pendingIntent);
+        
+        // Also clear any retry alarms
+        retryCountMap.remove(urlId);
+        for (int i = 1; i <= MAX_RETRY_COUNT; i++) {
+            int retryRequestCode = (int) urlId * 1000 + i;
+            Intent retryIntent = new Intent(context, TicketCheckerAlarm.class);
+            PendingIntent retryPendingIntent = PendingIntent.getBroadcast(
+                    context, 
+                    retryRequestCode, 
+                    retryIntent, 
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            alarmManager.cancel(retryPendingIntent);
+        }
+        
         Log.d(TAG, "Alarm canceled for URL ID: " + urlId);
     }
 
@@ -143,9 +185,10 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         if (intent.hasExtra("url")) {
             String url = intent.getStringExtra("url");
             long urlId = intent.getLongExtra("url_id", -1);
+            boolean isRetry = intent.getBooleanExtra("retry", false);
             
             Executors.newSingleThreadExecutor().execute(() -> {
-                checkTicketAvailability(context, url, urlId);
+                checkTicketAvailability(context, url, urlId, isRetry);
             });
         } else if (intent.getAction() != null && intent.getAction().equals("com.example.tixelcheck.TEST_ALERT")) {
             // Handle test alert broadcast
@@ -186,135 +229,136 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         }
     }
 
-    private void checkTicketAvailability(Context context, String url, long urlId) {
-        // Get the MonitoredUrl object from the database
+    private void checkTicketAvailability(Context context, String url, long urlId, boolean isRetry) {
+        // Get the full URL object from the database
         MonitoredUrl monitoredUrl = UrlDatabase.getInstance(context).getUrlById(urlId);
         if (monitoredUrl == null) {
-            Log.e(TAG, "Could not find URL with ID " + urlId + " in database");
+            Log.e(TAG, "URL with ID " + urlId + " not found in database");
+            return;
+        }
+        
+        if (!monitoredUrl.isActive()) {
+            Log.d(TAG, "URL is inactive, canceling alarm");
+            cancelAlarm(context, urlId);
             return;
         }
         
         // Update last checked timestamp
         long now = System.currentTimeMillis();
-        monitoredUrl.setLastChecked(now);
-        UrlDatabase.getInstance(context).updateLastChecked(urlId, now);
+        monitoredUrl.setLastCheckedTimestamp(now);
+        
+        boolean hasTickets = false;
+        boolean networkError = false;
         
         try {
+            Log.d(TAG, "Checking URL: " + url + (isRetry ? " (retry)" : ""));
+            
             Document doc = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
                     .timeout(15000)
                     .get();
             
-            // Reset consecutive errors counter on successful request
-            if (monitoredUrl.getConsecutiveErrors() > 0) {
-                monitoredUrl.resetConsecutiveErrors();
-                UrlDatabase.getInstance(context).updateConsecutiveErrors(urlId, 0);
-                Log.d(TAG, "Reset consecutive errors counter for URL ID " + urlId);
-            }
-            
-            // Extract event details
-            String eventName = extractEventName(doc);
-            String eventDate = extractEventDate(doc);
-            
-            Log.d(TAG, "Extracted event details - Name: " + eventName + ", Date: " + eventDate);
-            
-            // Update database with event details if they were found
-            if (!eventName.isEmpty() || !eventDate.isEmpty()) {
-                UrlDatabase.getInstance(context).updateEventDetails(urlId, eventName, eventDate);
-                // Update our local copy
-                monitoredUrl.setEventName(eventName);
-                monitoredUrl.setEventDate(eventDate);
+            // Extract event details if not already set
+            if (!monitoredUrl.hasEventDetails()) {
+                String eventName = extractEventName(doc);
+                String eventDate = extractEventDate(doc);
+                
+                if (!eventName.isEmpty() || !eventDate.isEmpty()) {
+                    monitoredUrl.setEventName(eventName);
+                    monitoredUrl.setEventDate(eventDate);
+                    monitoredUrl.detectEventType();
+                    Log.d(TAG, "Extracted event details - Name: " + eventName + ", Date: " + eventDate);
+                }
             }
             
             // Simplified ticket detection logic that specifically looks for "Listing available" or "Listings available"
             String pageText = doc.text().toLowerCase();
-            boolean hasTickets = pageText.contains("listing available") || pageText.contains("listings available");
+            hasTickets = pageText.contains("listing available") || pageText.contains("listings available");
             
             // Log the detection result and the relevant text for debugging
             Log.d(TAG, "Page text contains 'listing available': " + pageText.contains("listing available"));
             Log.d(TAG, "Page text contains 'listings available': " + pageText.contains("listings available"));
             
-            if (hasTickets) {
-                // Update database
-                if (!monitoredUrl.isTicketsFound()) {
-                    monitoredUrl.setTicketsFound(true);
-                    UrlDatabase.getInstance(context).updateTicketsFound(urlId, true);
-                }
-                
-                // Create a notification with a better title and message based on event details
-                String notificationTitle;
-                String notificationMessage;
-                
-                if (!eventName.isEmpty()) {
-                    notificationTitle = "🎟️ Tickets for " + eventName + "!";
-                } else {
-                    notificationTitle = "🎟️ Tickets Available!";
-                }
-                
-                if (!eventName.isEmpty() && !eventDate.isEmpty()) {
-                    notificationMessage = "Tickets have been found for " + eventName + " on " + eventDate + ". Tap to view the listing now!";
-                } else if (!eventName.isEmpty()) {
-                    notificationMessage = "Tickets have been found for " + eventName + ". Tap to view the listing now!";
-                } else if (!eventDate.isEmpty()) {
-                    notificationMessage = "Tickets have been found for your monitored event on " + eventDate + ". Tap to view the listing now!";
-                } else {
-                    notificationMessage = "Tickets have been found for your monitored event. Tap to view the listing now!";
-                }
-                
-                // Add URL ID to intent for event detail extraction when notification is clicked
-                sendNotification(context, notificationTitle, notificationMessage, urlId, url);
-                Log.d(TAG, "Tickets found for URL: " + url);
-                
-                // Also play an additional alarm sound to ensure user is alerted
-                try {
-                    Uri alarmSound = Settings.System.DEFAULT_ALARM_ALERT_URI;
-                    MediaPlayer mediaPlayer = MediaPlayer.create(context, alarmSound);
-                    mediaPlayer.setLooping(true); // Loop the alarm until user interacts with notification
-                    mediaPlayer.start();
-                    
-                    // Store reference to MediaPlayer to stop it when the notification is tapped
-                    synchronized (TicketCheckerAlarm.class) {
-                        if (activeAlarmPlayer != null) {
-                            activeAlarmPlayer.release();
-                        }
-                        activeAlarmPlayer = mediaPlayer;
-                        activeAlarmUrlId = urlId;
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error playing alarm", e);
-                }
-            } else {
-                Log.d(TAG, "No tickets available for URL: " + url);
-                
-                // If tickets were found before but now aren't, update the status
-                if (monitoredUrl.isTicketsFound()) {
-                    monitoredUrl.setTicketsFound(false);
-                    UrlDatabase.getInstance(context).updateTicketsFound(urlId, false);
-                }
-            }
-            
-            // Re-schedule the alarm for the next check
-            if (monitoredUrl.isActive()) {
-                setAlarm(context, monitoredUrl);
-            }
+            // Reset retry count on successful check
+            retryCountMap.remove(urlId);
             
         } catch (IOException e) {
             Log.e(TAG, "Error checking URL: " + url, e);
+            networkError = true;
+        }
+        
+        // Update the URL in the database with last checked time and tickets found status
+        monitoredUrl.setHasTicketsFound(hasTickets);
+        UrlDatabase.getInstance(context).updateLastChecked(urlId, now, hasTickets);
+        
+        if (hasTickets) {
+            // Add a history entry for this ticket finding
+            String note = "Tickets found";
+            if (monitoredUrl.hasEventDetails()) {
+                note += " for " + monitoredUrl.getEventName();
+                if (!monitoredUrl.getEventDate().isEmpty()) {
+                    note += " on " + monitoredUrl.getEventDate();
+                }
+            }
+            UrlDatabase.getInstance(context).addTicketHistory(urlId, now, note);
             
-            // Increment consecutive errors counter
-            monitoredUrl.incrementConsecutiveErrors();
-            UrlDatabase.getInstance(context).updateConsecutiveErrors(urlId, monitoredUrl.getConsecutiveErrors());
+            // Broadcast update to refresh UI
+            Intent refreshIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+            LocalBroadcastManager.getInstance(context).sendBroadcast(refreshIntent);
             
-            // If we've exceeded maximum retries, add jitter
-            if (monitoredUrl.getConsecutiveErrors() >= MAX_RETRY_ATTEMPTS) {
-                Log.w(TAG, "Exceeded maximum retry attempts for URL ID " + urlId + 
-                    ". Using exponential backoff with jitter.");
+            // Create a notification with a better title and message based on event details
+            String notificationTitle;
+            String notificationMessage;
+            
+            if (!monitoredUrl.getEventName().isEmpty()) {
+                notificationTitle = "🎟️ Tickets for " + monitoredUrl.getEventName() + "!";
+            } else {
+                notificationTitle = "🎟️ Tickets Available!";
             }
             
-            // Re-schedule even on error with appropriate backoff
-            if (monitoredUrl.isActive()) {
-                setAlarm(context, monitoredUrl);
+            if (!monitoredUrl.getEventName().isEmpty() && !monitoredUrl.getEventDate().isEmpty()) {
+                notificationMessage = "Tickets have been found for " + monitoredUrl.getEventName() + " on " + monitoredUrl.getEventDate() + ". Tap to view the listing now!";
+            } else if (!monitoredUrl.getEventName().isEmpty()) {
+                notificationMessage = "Tickets have been found for " + monitoredUrl.getEventName() + ". Tap to view the listing now!";
+            } else if (!monitoredUrl.getEventDate().isEmpty()) {
+                notificationMessage = "Tickets have been found for your monitored event on " + monitoredUrl.getEventDate() + ". Tap to view the listing now!";
+            } else {
+                notificationMessage = "Tickets have been found for your monitored event. Tap to view the listing now!";
             }
+            
+            // Add URL ID to intent for event detail extraction when notification is clicked
+            sendNotification(context, notificationTitle, notificationMessage, urlId, url);
+            Log.d(TAG, "Tickets found for URL: " + url);
+            
+            // Also play an additional alarm sound to ensure user is alerted
+            try {
+                Uri alarmSound = Settings.System.DEFAULT_ALARM_ALERT_URI;
+                MediaPlayer mediaPlayer = MediaPlayer.create(context, alarmSound);
+                mediaPlayer.setLooping(true); // Loop the alarm until user interacts with notification
+                mediaPlayer.start();
+                
+                // Store reference to MediaPlayer to stop it when the notification is tapped
+                synchronized (TicketCheckerAlarm.class) {
+                    if (activeAlarmPlayer != null) {
+                        activeAlarmPlayer.release();
+                    }
+                    activeAlarmPlayer = mediaPlayer;
+                    activeAlarmUrlId = urlId;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error playing alarm", e);
+            }
+        } else {
+            Log.d(TAG, "No tickets available for URL: " + url);
+        }
+        
+        // Check if we need to retry due to network error
+        if (networkError) {
+            Log.d(TAG, "Network error occurred, setting up retry with exponential backoff");
+            setRetryAlarm(context, monitoredUrl);
+        } else {
+            // Re-schedule the normal alarm for the next check
+            setAlarm(context, monitoredUrl);
         }
     }
     
@@ -483,10 +527,6 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         PendingIntent deleteIntentPending = PendingIntent.getBroadcast(
             context, (int)urlId * 100 + 3, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Get current night mode
-        int nightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        int iconColor = (nightMode == Configuration.UI_MODE_NIGHT_YES) ? Color.WHITE : Color.BLACK;
-        
         // Create a more attention-grabbing notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
@@ -500,7 +540,6 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                 .setVibrate(new long[] { 0, 500, 200, 500, 200, 500 }) // Vibration pattern
                 .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI) // Use alarm sound
                 .setLights(Color.RED, 1000, 500) // Flash LED if available
-                .setColor(iconColor) // Set icon color based on theme
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(message));
         
         // Add full screen intent for heads-up display
