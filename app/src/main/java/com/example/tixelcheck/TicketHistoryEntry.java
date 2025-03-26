@@ -5,19 +5,19 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * Represents a single history entry for when tickets were found
+ * Represents a historical record of when tickets were found
  */
 public class TicketHistoryEntry {
     private long id;
     private long urlId;
     private long timestamp;
-    private String message;
+    private String note;
     
-    public TicketHistoryEntry(long id, long urlId, long timestamp, String message) {
+    public TicketHistoryEntry(long id, long urlId, long timestamp, String note) {
         this.id = id;
         this.urlId = urlId;
         this.timestamp = timestamp;
-        this.message = message;
+        this.note = note;
     }
     
     public long getId() {
@@ -32,15 +32,15 @@ public class TicketHistoryEntry {
         return timestamp;
     }
     
-    public String getMessage() {
-        return message;
+    public String getNote() {
+        return note;
     }
     
     /**
-     * Returns a formatted date and time string
+     * Gets formatted timestamp string in format "DD/MM/YYYY, HH:MMam/pm"
      */
-    public String getFormattedDateTime() {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy, h:mm a", Locale.getDefault());
-        return dateFormat.format(new Date(timestamp));
+    public String getFormattedTimestamp() {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy, hh:mma", Locale.getDefault());
+        return sdf.format(new Date(timestamp));
     }
 }
