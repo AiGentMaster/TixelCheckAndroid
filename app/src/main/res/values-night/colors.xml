@@ -9,8 +9,7 @@
     <color name="colorInactive">#616161</color>
     <color name="colorTicketsFound">#EF5350</color>
     <color name="dialogBackgroundColor">#303030</color>
-    <color name="colorAccent">@color/accent</color>
-    <color name="colorAccentDark">@color/accent_dark</color>
     <color name="colorPrimary">@color/primary</color>
     <color name="colorPrimaryDark">@color/primary_dark</color>
+    <color name="colorAccent">@color/accent</color>
 </resources>
