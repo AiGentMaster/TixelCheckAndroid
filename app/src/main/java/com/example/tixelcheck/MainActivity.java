@@ -205,21 +205,29 @@ public class MainActivity extends AppCompatActivity {
         // Display toast message
         Toast.makeText(this, "Testing alert notification", Toast.LENGTH_SHORT).show();
         
+        // Create test notification with sample event details
+        String sampleEventName = "Sample Concert";
+        String sampleEventDate = "April 15, 2025";
+        
+        String notificationTitle = "🎟️ TEST: Tickets for " + sampleEventName + "!";
+        String notificationMessage = "This is a test alert showing how notifications will look. The real alert for " + 
+            sampleEventName + " on " + sampleEventDate + " will include the event details like this.";
+        
         // Create notification with same parameters as the real alert
         Intent intent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 1001, intent, PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "tixel_check_channel")
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("TEST ALERT: Tickets Available!")
-                .setContentText("This is a test alert. A real alert will look like this when tickets are found.")
+                .setContentTitle(notificationTitle)
+                .setContentText(notificationMessage)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setContentIntent(pendingIntent)
                 .setVibrate(new long[] { 0, 500, 200, 500, 200, 500 })
                 .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI)
                 .setLights(Color.RED, 1000, 500)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText("This is a test alert. When tickets are found for an event you're monitoring, you'll receive a notification like this one."))
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(notificationMessage))
                 .setAutoCancel(true);
                 
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
