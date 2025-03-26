@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="colorActive" format="color" />
+    <attr name="colorInactive" format="color" />
+    <attr name="colorTicketsFound" format="color" />
+    <attr name="dialogBackgroundColor" format="color" />
+</resources>
