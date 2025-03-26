@@ -20,54 +20,49 @@ jobs:
           cache: gradle
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 7.4
+        uses: gradle/actions/setup-gradle@v3
           
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Display Gradle version
+        run: ./gradlew --version
+        
       - name: Clean build directory
         run: ./gradlew clean
-      
-      - name: Decode Keystore
-        env:
-          ENCODED_KEYSTORE: ${{ secrets.SIGNING_KEY }}
-        run: |
-          if [ -n "$ENCODED_KEYSTORE" ]; then
-            echo $ENCODED_KEYSTORE | base64 -d > keystore.jks
-            echo "Keystore decoded successfully"
-          else
-            echo "No keystore provided, skipping decoding"
-            touch keystore.jks
-          fi
-      
-      - name: Build APK
-        run: |
-          ./gradlew assembleProductionRelease --stacktrace
         
-      - name: Upload Release APK
+      - name: Debug project structure
+        run: |
+          echo "Current directory structure:"
+          find . -type f -name "*.java" | sort
+          echo "\nGradle files:"
+          find . -name "*.gradle" | sort
+          echo "\nManifest file:"
+          find . -name "AndroidManifest.xml" | sort
+      
+      - name: Build APK (without signing)
+        run: |
+          ./gradlew assembleProductionDebug --info --stacktrace
+        
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: tixelcheck-release
-          path: app/build/outputs/apk/production/release/app-production-release*.apk
+          name: tixelcheck-debug
+          path: app/build/outputs/apk/production/debug/app-production-debug*.apk
           if-no-files-found: warn
-          
-      - name: Generate version info
-        id: version
-        run: echo "VERSION=$(grep -oP 'versionName "\K[^"]+' app/build/generated/source/buildConfig/production/release/com/example/tixelcheck/BuildConfig.java || echo '1.0.0')" >> $GITHUB_OUTPUT
           
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: success()
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: TixelCheck v${{ steps.version.outputs.VERSION }}
+          tag_name: v1.0.${{ github.run_number }}
+          name: TixelCheck v1.0.${{ github.run_number }}
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/apk/production/release/app-production-release*.apk
+            app/build/outputs/apk/production/debug/app-production-debug*.apk
           body: |
-            ## TixelCheck v${{ steps.version.outputs.VERSION }}
+            ## TixelCheck v1.0.${{ github.run_number }}
             
             **New in this version:**
             - Improved performance
