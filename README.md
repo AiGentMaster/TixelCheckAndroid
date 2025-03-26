@@ -2,7 +2,7 @@
 
 An Android application that monitors Tixel ticket URLs and alerts you when tickets become available.
 
-**Note: This project has been thoroughly reviewed and fixed with updated dependencies and improved build configuration.**
+**Note: This project has been thoroughly reviewed and fixed with updated dependencies and improved build configuration. The build workflow is now being verified.**
 
 ## Features
 
@@ -100,6 +100,8 @@ TixelCheck requires the following permissions:
 - Updated Gradle to version 7.4 for better compatibility
 - Updated Android Gradle Plugin to version 7.2.2
 - Fixed build configuration for modern Android development
+- Added product flavors for development and production builds
+- Added improved test support and code coverage tools
 
 ## License
 
