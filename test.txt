@@ -1,6 +1,7 @@
 This is a test file to trigger a new build.
-Last update was to fix the colors.xml in the night folder by adding a missing colorAccentDark definition.
-This should resolve the compilation error with the theme that was referencing a color that wasn't defined.
+Last update was to add the missing backgroundColor attribute to attrs.xml.
+Previous fix added the missing colorAccentDark to the night colors.xml file.
+These changes should resolve all theme/color related compilation issues.
 Previous issues with duplicate launcher icons have been resolved.
 The Gradle wrapper has been regenerated to version 7.4.
 All duplicate resource files have been cleaned up.
