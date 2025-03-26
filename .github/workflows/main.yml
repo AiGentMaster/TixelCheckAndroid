@@ -18,7 +18,22 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
           cache: gradle
-
+          
+      - name: Setup Gradle Wrapper
+        run: |
+          # Create gradle wrapper directory if it doesn't exist
+          mkdir -p gradle/wrapper
+          
+          # Create gradle-wrapper.properties file with Gradle 7.4 configuration
+          echo 'distributionBase=GRADLE_USER_HOME' > gradle/wrapper/gradle-wrapper.properties
+          echo 'distributionPath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-bin.zip' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'zipStoreBase=GRADLE_USER_HOME' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'zipStorePath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
+          
+          # Download the gradle-wrapper.jar file from a known source
+          curl -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v7.4.0/gradle/wrapper/gradle-wrapper.jar
+          
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
           
