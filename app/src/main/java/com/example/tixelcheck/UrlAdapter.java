@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
@@ -90,6 +91,40 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
                 e.printStackTrace();
             }
         });
+        
+        // Add long press to edit event details
+        holder.itemView.setOnLongClickListener(v -> {
+            showEventDetailsDialog(position);
+            return true;
+        });
+        
+        // Make event details text clickable to edit
+        holder.textEventDetails.setOnClickListener(v -> {
+            showEventDetailsDialog(position);
+        });
+    }
+
+    /**
+     * Shows a dialog to edit event details
+     */
+    private void showEventDetailsDialog(int position) {
+        MonitoredUrl url = urlList.get(position);
+        
+        AddEventDetailsDialog dialog = new AddEventDetailsDialog(context, url, (eventName, eventDate) -> {
+            // Update the URL with new event details
+            url.setEventName(eventName);
+            url.setEventDate(eventDate);
+            
+            // Update the database
+            UrlDatabase.getInstance(context).updateEventDetails(url.getId(), eventName, eventDate);
+            
+            // Update the UI
+            notifyItemChanged(position);
+            
+            Toast.makeText(context, "Event details updated", Toast.LENGTH_SHORT).show();
+        });
+        
+        dialog.show();
     }
 
     @Override
