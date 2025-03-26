@@ -182,6 +182,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                     notificationMessage = "Tickets found for " + eventName + " on " + eventDate + "! Tap to open.";
                 }
                 
+                // Add URL ID to intent for event detail extraction when notification is clicked
                 sendNotification(context, notificationTitle, notificationMessage, urlId, url);
                 Log.d(TAG, "Tickets found for URL: " + url);
                 
@@ -227,7 +228,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     /**
      * Extract the event name from the Tixel webpage
      */
-    private String extractEventName(Document doc) {
+    public static String extractEventName(Document doc) {
         try {
             // Try different selectors that might contain the event name
             // For primary event title
@@ -277,7 +278,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     /**
      * Extract the event date from the Tixel webpage
      */
-    private String extractEventDate(Document doc) {
+    public static String extractEventDate(Document doc) {
         try {
             // Look for date information in specific elements
             Elements dateElements = doc.select(".event-date, .date, time");
@@ -371,7 +372,8 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         openUrlIntent.setAction("com.example.tixelcheck.OPEN_URL");
         if (urlToOpen != null && !urlToOpen.isEmpty()) {
             openUrlIntent.putExtra("url", urlToOpen);
-            Log.d(TAG, "Added URL to open: " + urlToOpen);
+            openUrlIntent.putExtra("url_id", urlId); // Include URL ID for event details extraction
+            Log.d(TAG, "Added URL to open: " + urlToOpen + " with ID: " + urlId);
         }
         PendingIntent openUrlPendingIntent = PendingIntent.getBroadcast(
             context, (int)urlId * 100 + 1, openUrlIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
