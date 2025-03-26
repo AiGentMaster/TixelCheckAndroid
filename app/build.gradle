@@ -1,6 +1,4 @@
-plugins {
-    id 'com.android.application'
-}
+apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 31
@@ -26,17 +24,16 @@ android {
         }
     }
     
-    flavorDimensions "environment"
+    flavorDimensions "default"
     
     productFlavors {
         development {
-            dimension "environment"
+            dimension "default"
             applicationIdSuffix ".dev"
-            versionNameSuffix "-dev"
         }
         
         production {
-            dimension "environment"
+            dimension "default"
         }
     }
     
@@ -49,8 +46,6 @@ android {
         abortOnError false
         checkReleaseBuilds false
     }
-    
-    namespace "com.example.tixelcheck"
 }
 
 dependencies {
