@@ -1,0 +1,29 @@
+name: Delete Duplicate Resources
+
+on:
+  workflow_dispatch:  # This allows manual triggering from the GitHub UI
+
+jobs:
+  delete-resources:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Remove duplicate files
+        run: |
+          # Remove empty XML files that are causing conflicts
+          rm -f app/src/main/res/mipmap-mdpi/ic_launcher.xml
+          rm -f app/src/main/res/mipmap-mdpi/ic_launcher_round.xml
+          
+          # Verify files are gone
+          ls -la app/src/main/res/mipmap-mdpi/
+        
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add -A
+          git commit -m "Remove duplicate launcher icon resources"
+          git push
