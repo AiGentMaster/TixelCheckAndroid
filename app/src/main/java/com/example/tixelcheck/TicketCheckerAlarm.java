@@ -145,25 +145,13 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                     .timeout(15000)
                     .get();
             
-            // Enhanced ticket detection logic with more specific patterns for Tixel
-            boolean hasTickets = doc.select(".tickets-available").size() > 0 || 
-                                doc.select(".ticket-panel:not(.sold-out)").size() > 0 ||
-                                doc.select(".ticket-status:contains(Available)").size() > 0 ||
-                                doc.select(".ticket-status:not(:contains(Not available))").size() > 0 ||
-                                doc.select(".available-tickets").size() > 0 ||
-                                doc.select(".tixel-ticket-card:not(.tixel-ticket-card--sold-out)").size() > 0 ||
-                                doc.select("[class*=ticket]:not([class*=sold]),[class*=ticket]:not([class*=unavailable])").size() > 0 ||
-                                doc.select("button:contains(Buy)").size() > 0 ||
-                                doc.select("button:contains(Purchase)").size() > 0 ||
-                                doc.select("a:contains(Buy)").size() > 0 ||
-                                doc.select("a:contains(Purchase)").size() > 0 ||
-                                doc.text().toLowerCase().contains("ticket available") ||
-                                doc.text().toLowerCase().contains("tickets available") ||
-                                doc.text().toLowerCase().contains("buy ticket") ||
-                                doc.text().toLowerCase().contains("purchase ticket") ||
-                                doc.text().toLowerCase().contains("add to cart") ||
-                                !doc.text().toLowerCase().contains("no tickets available") &&
-                                !doc.text().toLowerCase().contains("sold out");
+            // Simplified ticket detection logic that specifically looks for "Listing available" or "Listings available"
+            String pageText = doc.text().toLowerCase();
+            boolean hasTickets = pageText.contains("listing available") || pageText.contains("listings available");
+            
+            // Log the detection result and the relevant text for debugging
+            Log.d(TAG, "Page text contains 'listing available': " + pageText.contains("listing available"));
+            Log.d(TAG, "Page text contains 'listings available': " + pageText.contains("listings available"));
             
             if (hasTickets) {
                 // Trigger high-priority notification with sound and vibration
