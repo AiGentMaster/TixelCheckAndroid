@@ -22,6 +22,8 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 
@@ -145,6 +147,17 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                     .timeout(15000)
                     .get();
             
+            // Extract event details
+            String eventName = extractEventName(doc);
+            String eventDate = extractEventDate(doc);
+            
+            Log.d(TAG, "Extracted event details - Name: " + eventName + ", Date: " + eventDate);
+            
+            // Update database with event details if they were found
+            if (!eventName.isEmpty() || !eventDate.isEmpty()) {
+                UrlDatabase.getInstance(context).updateEventDetails(urlId, eventName, eventDate);
+            }
+            
             // Simplified ticket detection logic that specifically looks for "Listing available" or "Listings available"
             String pageText = doc.text().toLowerCase();
             boolean hasTickets = pageText.contains("listing available") || pageText.contains("listings available");
@@ -155,7 +168,21 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
             
             if (hasTickets) {
                 // Trigger high-priority notification with sound and vibration
-                sendNotification(context, "Tickets Available!", "Tickets found for your monitored event! Tap to open the website.", urlId, url);
+                String notificationTitle = "Tickets Available!";
+                if (!eventName.isEmpty()) {
+                    notificationTitle = "Tickets for " + eventName + "!";
+                }
+                
+                String notificationMessage = "Tickets found for your monitored event! Tap to open the website.";
+                if (!eventDate.isEmpty()) {
+                    notificationMessage = "Tickets found for your monitored event on " + eventDate + "! Tap to open.";
+                }
+                
+                if (!eventName.isEmpty() && !eventDate.isEmpty()) {
+                    notificationMessage = "Tickets found for " + eventName + " on " + eventDate + "! Tap to open.";
+                }
+                
+                sendNotification(context, notificationTitle, notificationMessage, urlId, url);
                 Log.d(TAG, "Tickets found for URL: " + url);
                 
                 // Also play an additional alarm sound to ensure user is alerted
@@ -181,14 +208,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
             }
             
             // Re-schedule the alarm for the next check
-            MonitoredUrl monitoredUrl = null;
-            for (MonitoredUrl u : UrlDatabase.getInstance(context).getAllUrls()) {
-                if (u.getId() == urlId) {
-                    monitoredUrl = u;
-                    break;
-                }
-            }
-            
+            MonitoredUrl monitoredUrl = UrlDatabase.getInstance(context).getUrlById(urlId);
             if (monitoredUrl != null && monitoredUrl.isActive()) {
                 setAlarm(context, monitoredUrl);
             }
@@ -197,17 +217,108 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
             Log.e(TAG, "Error checking URL: " + url, e);
             
             // Re-schedule even on error to keep checking
-            MonitoredUrl monitoredUrl = null;
-            for (MonitoredUrl u : UrlDatabase.getInstance(context).getAllUrls()) {
-                if (u.getId() == urlId) {
-                    monitoredUrl = u;
-                    break;
-                }
-            }
-            
+            MonitoredUrl monitoredUrl = UrlDatabase.getInstance(context).getUrlById(urlId);
             if (monitoredUrl != null && monitoredUrl.isActive()) {
                 setAlarm(context, monitoredUrl);
             }
+        }
+    }
+    
+    /**
+     * Extract the event name from the Tixel webpage
+     */
+    private String extractEventName(Document doc) {
+        try {
+            // Try different selectors that might contain the event name
+            // For primary event title
+            Elements titleElements = doc.select("h1");
+            if (!titleElements.isEmpty()) {
+                return titleElements.first().text().trim();
+            }
+            
+            // Try event title that might be in other heading levels
+            titleElements = doc.select("h2, h3");
+            for (Element element : titleElements) {
+                if (element.text().length() > 5 && !element.text().toLowerCase().contains("faq") && 
+                    !element.text().toLowerCase().contains("similar")) {
+                    return element.text().trim();
+                }
+            }
+            
+            // Try schema.org metadata
+            Elements metadata = doc.select("script[type=application/ld+json]");
+            if (!metadata.isEmpty()) {
+                String json = metadata.first().html();
+                if (json.contains("\"name\":")) {
+                    int nameIndex = json.indexOf("\"name\":");
+                    if (nameIndex > 0) {
+                        int startQuote = json.indexOf("\"", nameIndex + 7) + 1;
+                        int endQuote = json.indexOf("\"", startQuote);
+                        if (startQuote > 0 && endQuote > startQuote) {
+                            return json.substring(startQuote, endQuote).trim();
+                        }
+                    }
+                }
+            }
+            
+            // Try meta tags
+            Element ogTitle = doc.select("meta[property=og:title]").first();
+            if (ogTitle != null) {
+                return ogTitle.attr("content").trim();
+            }
+            
+            return "";
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting event name", e);
+            return "";
+        }
+    }
+    
+    /**
+     * Extract the event date from the Tixel webpage
+     */
+    private String extractEventDate(Document doc) {
+        try {
+            // Look for date information in specific elements
+            Elements dateElements = doc.select(".event-date, .date, time");
+            if (!dateElements.isEmpty()) {
+                return dateElements.first().text().trim();
+            }
+            
+            // Try looking for date patterns in text
+            Elements paragraphs = doc.select("p, span, div");
+            for (Element element : paragraphs) {
+                String text = element.text().trim();
+                // Check for common date formats
+                if ((text.matches(".*\\d{1,2}\\s+[A-Za-z]+\\s+\\d{4}.*") || 
+                     text.matches(".*[A-Za-z]+\\s+\\d{1,2}(st|nd|rd|th)?\\s+\\d{4}.*") ||
+                     text.matches(".*\\d{1,2}/\\d{1,2}/\\d{2,4}.*") ||
+                     text.matches(".*\\d{1,2}-\\d{1,2}-\\d{2,4}.*")) && 
+                     text.length() < 40) { // Keep it short to avoid capturing paragraphs
+                    return text;
+                }
+            }
+            
+            // Try schema.org metadata
+            Elements metadata = doc.select("script[type=application/ld+json]");
+            if (!metadata.isEmpty()) {
+                String json = metadata.first().html();
+                if (json.contains("\"startDate\":")) {
+                    int dateIndex = json.indexOf("\"startDate\":");
+                    if (dateIndex > 0) {
+                        int startQuote = json.indexOf("\"", dateIndex + 12) + 1;
+                        int endQuote = json.indexOf("\"", startQuote);
+                        if (startQuote > 0 && endQuote > startQuote) {
+                            return json.substring(startQuote, endQuote).trim();
+                        }
+                    }
+                }
+            }
+            
+            return "";
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting event date", e);
+            return "";
         }
     }
     
