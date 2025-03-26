@@ -2,7 +2,6 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/card_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
@@ -28,8 +27,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginEnd="8dp"
-                android:src="@drawable/ic_other"
-                android:contentDescription="Event Type" />
+                android:src="@drawable/ic_other" />
 
             <TextView
                 android:id="@+id/text_url"
@@ -40,14 +38,7 @@
                 android:textStyle="bold"
                 android:maxLines="2"
                 android:ellipsize="end" />
-                
-            <ImageView
-                android:id="@+id/image_status"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="8dp"
-                android:src="@drawable/ic_active"
-                android:contentDescription="Status" />
+
         </LinearLayout>
 
         <TextView
@@ -66,52 +57,58 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="14sp" />
-            
+
         <TextView
             android:id="@+id/text_last_checked"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="12sp"
-            android:textStyle="italic" />
+            android:layout_marginTop="2dp"
+            android:textSize="14sp"
+            android:textColor="#757575" />
         
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="16dp">
-            
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Tap to edit settings | Long-press for event details"
+                android:textSize="12sp"
+                android:textColor="#757575"
+                android:gravity="center_vertical" />
+
             <Button
                 android:id="@+id/button_history"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="History"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_marginEnd="8dp" />
-                
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Tap to edit settings"
                 android:textSize="12sp"
-                android:textColor="#757575"
-                android:gravity="center" />
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
 
             <Switch
                 android:id="@+id/switch_active"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Active" />
+
+            <Button
+                android:id="@+id/button_delete"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Active"
-                android:layout_marginStart="8dp" />
+                android:text="Delete"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
         </LinearLayout>
-        
-        <Button
-            android:id="@+id/button_delete"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Delete"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_marginTop="8dp" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>
