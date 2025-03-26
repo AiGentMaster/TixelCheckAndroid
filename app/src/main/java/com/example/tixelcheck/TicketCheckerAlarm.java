@@ -117,7 +117,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     
     private void sendTestNotification(Context context) {
         Log.d(TAG, "Sending test notification");
-        sendNotification(context, "TEST ALERT: Tickets Available!", "This is a test alert. A real alert will look like this when tickets are found.", 9999);
+        sendNotification(context, "TEST ALERT: Tickets Available!", "This is a test alert. A real alert will look like this when tickets are found.", 9999, "https://tixel.com");
         
         // Play an additional alarm sound for the test
         try {
@@ -155,7 +155,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
             
             if (hasTickets) {
                 // Trigger high-priority notification with sound and vibration
-                sendNotification(context, "Tickets Available!", "Tickets found for your monitored event! Tap to open the website.", urlId);
+                sendNotification(context, "Tickets Available!", "Tickets found for your monitored event! Tap to open the website.", urlId, url);
                 Log.d(TAG, "Tickets found for URL: " + url);
                 
                 // Also play an additional alarm sound to ensure user is alerted
@@ -246,17 +246,8 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         }
     }
 
-    private void sendNotification(Context context, String title, String message, long urlId) {
+    private void sendNotification(Context context, String title, String message, long urlId, String urlToOpen) {
         createNotificationChannel(context);
-        
-        // Get the URL for this notification to allow direct opening
-        String url = null;
-        for (MonitoredUrl monitoredUrl : UrlDatabase.getInstance(context).getAllUrls()) {
-            if (monitoredUrl.getId() == urlId) {
-                url = monitoredUrl.getUrl();
-                break;
-            }
-        }
         
         // Set up the main click intent (open app)
         Intent mainIntent = new Intent(context, MainActivity.class);
@@ -264,20 +255,27 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         PendingIntent mainPendingIntent = PendingIntent.getActivity(
             context, 0, mainIntent, PendingIntent.FLAG_IMMUTABLE);
             
-        // Set up open URL intent
+        // Set up open URL intent with direct URL
         Intent openUrlIntent = new Intent(context, NotificationActionReceiver.class);
         openUrlIntent.setAction("com.example.tixelcheck.OPEN_URL");
-        if (url != null) {
-            openUrlIntent.putExtra("url", url);
+        if (urlToOpen != null && !urlToOpen.isEmpty()) {
+            openUrlIntent.putExtra("url", urlToOpen);
+            Log.d(TAG, "Added URL to open: " + urlToOpen);
         }
         PendingIntent openUrlPendingIntent = PendingIntent.getBroadcast(
-            context, 1, openUrlIntent, PendingIntent.FLAG_IMMUTABLE);
+            context, (int)urlId * 100 + 1, openUrlIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             
         // Set up stop alarm intent
         Intent stopAlarmIntent = new Intent(context, NotificationActionReceiver.class);
         stopAlarmIntent.setAction("com.example.tixelcheck.STOP_ALARM");
         PendingIntent stopAlarmPendingIntent = PendingIntent.getBroadcast(
-            context, 2, stopAlarmIntent, PendingIntent.FLAG_IMMUTABLE);
+            context, (int)urlId * 100 + 2, stopAlarmIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // Create a deleteIntent to stop alarm when notification is dismissed
+        Intent deleteIntent = new Intent(context, NotificationActionReceiver.class);
+        deleteIntent.setAction("com.example.tixelcheck.STOP_ALARM");
+        PendingIntent deleteIntentPending = PendingIntent.getBroadcast(
+            context, (int)urlId * 100 + 3, deleteIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         // Create a more attention-grabbing notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
@@ -287,6 +285,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                 .setPriority(NotificationCompat.PRIORITY_MAX) // Highest priority
                 .setCategory(NotificationCompat.CATEGORY_ALARM) // Treat as alarm
                 .setContentIntent(mainPendingIntent)
+                .setDeleteIntent(deleteIntentPending) // Stop alarm when notification is dismissed
                 .setAutoCancel(true)
                 .setVibrate(new long[] { 0, 500, 200, 500, 200, 500 }) // Vibration pattern
                 .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI) // Use alarm sound
@@ -299,7 +298,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         }
                 
         // Add action buttons to the notification
-        if (url != null) {
+        if (urlToOpen != null && !urlToOpen.isEmpty()) {
             builder.addAction(R.drawable.ic_open, "Open Website", openUrlPendingIntent);
         }
         builder.addAction(R.drawable.ic_stop, "Stop Alarm", stopAlarmPendingIntent);
