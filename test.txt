@@ -1,7 +1,7 @@
 This is a test file to trigger a new build.
 Date: 2025-03-26
-Time: 1:00 PM
+Time: 1:15 PM
 
-This build should fix the duplicate resource issues:
-1. Removed duplicate launcher icon XML files (keeping the PNG versions)
-2. Removed duplicate theme style (keeping the one in themes.xml)
+Fix for duplicate launcher icons:
+1. Removed duplicate XML definitions for launcher icons (keeping only the PNG versions)
+2. This should resolve the 'Error: Duplicate resources' issue
