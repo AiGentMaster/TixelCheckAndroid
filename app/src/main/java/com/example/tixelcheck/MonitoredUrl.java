@@ -5,16 +5,21 @@ import java.util.Date;
 import java.util.Locale;
 
 public class MonitoredUrl {
+    // Event types
+    public static final String EVENT_TYPE_CONCERT = "concert";
+    public static final String EVENT_TYPE_SPORTS = "sports";
+    public static final String EVENT_TYPE_THEATER = "theater";
+    public static final String EVENT_TYPE_OTHER = "other";
+    
     private long id;
     private String url;
     private int frequency; // In minutes
     private boolean isActive;
     private String eventName;
     private String eventDate;
-    private String eventType; // "concert", "sports", "theater", "other"
-    private long lastChecked; // Timestamp of last check
-    private int consecutiveErrors; // For exponential backoff
-    private boolean ticketsFound; // Flag to indicate if tickets were found
+    private String eventType; // concert, sports, theater, other
+    private long lastCheckedTimestamp; // Unix timestamp of last check
+    private boolean hasTicketsFound; // Whether tickets were found on last check
 
     public MonitoredUrl(long id, String url, int frequency, boolean isActive) {
         this.id = id;
@@ -23,10 +28,9 @@ public class MonitoredUrl {
         this.isActive = isActive;
         this.eventName = "";
         this.eventDate = "";
-        this.eventType = "other";
-        this.lastChecked = 0;
-        this.consecutiveErrors = 0;
-        this.ticketsFound = false;
+        this.eventType = EVENT_TYPE_OTHER;
+        this.lastCheckedTimestamp = 0;
+        this.hasTicketsFound = false;
     }
 
     public MonitoredUrl(long id, String url, int frequency, boolean isActive, String eventName, String eventDate) {
@@ -36,15 +40,14 @@ public class MonitoredUrl {
         this.isActive = isActive;
         this.eventName = eventName;
         this.eventDate = eventDate;
-        this.eventType = determineEventType(eventName);
-        this.lastChecked = 0;
-        this.consecutiveErrors = 0;
-        this.ticketsFound = false;
+        this.eventType = EVENT_TYPE_OTHER; // Default
+        this.lastCheckedTimestamp = 0;
+        this.hasTicketsFound = false;
     }
     
     public MonitoredUrl(long id, String url, int frequency, boolean isActive, 
-                       String eventName, String eventDate, String eventType, 
-                       long lastChecked, int consecutiveErrors, boolean ticketsFound) {
+                       String eventName, String eventDate, String eventType,
+                       long lastCheckedTimestamp, boolean hasTicketsFound) {
         this.id = id;
         this.url = url;
         this.frequency = frequency;
@@ -52,9 +55,8 @@ public class MonitoredUrl {
         this.eventName = eventName;
         this.eventDate = eventDate;
         this.eventType = eventType;
-        this.lastChecked = lastChecked;
-        this.consecutiveErrors = consecutiveErrors;
-        this.ticketsFound = ticketsFound;
+        this.lastCheckedTimestamp = lastCheckedTimestamp;
+        this.hasTicketsFound = hasTicketsFound;
     }
 
     public long getId() {
@@ -83,7 +85,6 @@ public class MonitoredUrl {
     
     public void setEventName(String eventName) {
         this.eventName = eventName;
-        this.eventType = determineEventType(eventName);
     }
     
     public String getEventDate() {
@@ -94,6 +95,10 @@ public class MonitoredUrl {
         this.eventDate = eventDate;
     }
     
+    public boolean hasEventDetails() {
+        return eventName != null && !eventName.isEmpty();
+    }
+    
     public String getEventType() {
         return eventType;
     }
@@ -102,93 +107,73 @@ public class MonitoredUrl {
         this.eventType = eventType;
     }
     
-    public long getLastChecked() {
-        return lastChecked;
+    public long getLastCheckedTimestamp() {
+        return lastCheckedTimestamp;
     }
     
-    public void setLastChecked(long lastChecked) {
-        this.lastChecked = lastChecked;
+    public void setLastCheckedTimestamp(long lastCheckedTimestamp) {
+        this.lastCheckedTimestamp = lastCheckedTimestamp;
     }
     
-    public int getConsecutiveErrors() {
-        return consecutiveErrors;
+    public boolean hasTicketsFound() {
+        return hasTicketsFound;
     }
     
-    public void setConsecutiveErrors(int consecutiveErrors) {
-        this.consecutiveErrors = consecutiveErrors;
+    public void setHasTicketsFound(boolean hasTicketsFound) {
+        this.hasTicketsFound = hasTicketsFound;
     }
     
-    public void incrementConsecutiveErrors() {
-        this.consecutiveErrors++;
-    }
-    
-    public void resetConsecutiveErrors() {
-        this.consecutiveErrors = 0;
-    }
-    
-    public boolean isTicketsFound() {
-        return ticketsFound;
-    }
-    
-    public void setTicketsFound(boolean ticketsFound) {
-        this.ticketsFound = ticketsFound;
-    }
-    
-    public boolean hasEventDetails() {
-        return eventName != null && !eventName.isEmpty();
+    public void updateLastChecked() {
+        this.lastCheckedTimestamp = System.currentTimeMillis();
     }
     
     /**
-     * Gets a formatted string representation of when this URL was last checked
+     * Gets formatted last checked string in format "DD/MM/YYYY, HH:MMam/pm"
      */
-    public String getLastCheckedFormatted() {
-        if (lastChecked <= 0) {
+    public String getFormattedLastChecked() {
+        if (lastCheckedTimestamp == 0) {
             return "Never checked";
         }
         
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy, h:mm a", Locale.getDefault());
-        return "Last checked: " + dateFormat.format(new Date(lastChecked));
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy, hh:mma", Locale.getDefault());
+        return sdf.format(new Date(lastCheckedTimestamp));
     }
     
     /**
-     * Determine event type based on event name
+     * Determines the event type from the event name and URL
+     * Uses keywords to guess the most likely type
      */
-    private String determineEventType(String name) {
-        if (name == null || name.isEmpty()) {
-            return "other";
-        }
+    public void detectEventType() {
+        String nameAndUrl = (eventName + " " + url).toLowerCase();
         
-        String lowerName = name.toLowerCase();
-        
-        // Check for concert keywords
-        if (lowerName.contains("concert") || lowerName.contains("festival") || 
-            lowerName.contains("music") || lowerName.contains("band") || 
-            lowerName.contains("tour") || lowerName.contains("live") ||
-            lowerName.contains("dj") || lowerName.contains("gig")) {
-            return "concert";
+        // Check for concert/music keywords
+        if (nameAndUrl.contains("concert") || nameAndUrl.contains("music") || 
+            nameAndUrl.contains("festival") || nameAndUrl.contains("band") ||
+            nameAndUrl.contains("singer") || nameAndUrl.contains("tour") ||
+            nameAndUrl.contains("dj")) {
+            this.eventType = EVENT_TYPE_CONCERT;
+            return;
         }
         
         // Check for sports keywords
-        if (lowerName.contains("game") || lowerName.contains("match") || 
-            lowerName.contains("sport") || lowerName.contains("league") || 
-            lowerName.contains("cup") || lowerName.contains("championship") ||
-            lowerName.contains("football") || lowerName.contains("soccer") ||
-            lowerName.contains("rugby") || lowerName.contains("cricket") ||
-            lowerName.contains("tennis") || lowerName.contains("basketball") ||
-            lowerName.contains("golf") || lowerName.contains("racing")) {
-            return "sports";
+        if (nameAndUrl.contains("game") || nameAndUrl.contains("match") ||
+            nameAndUrl.contains("stadium") || nameAndUrl.contains("arena") ||
+            nameAndUrl.contains("sport") || nameAndUrl.contains("ball") ||
+            nameAndUrl.contains("team") || nameAndUrl.contains("championship")) {
+            this.eventType = EVENT_TYPE_SPORTS;
+            return;
         }
         
         // Check for theater keywords
-        if (lowerName.contains("theater") || lowerName.contains("theatre") || 
-            lowerName.contains("play") || lowerName.contains("musical") || 
-            lowerName.contains("stage") || lowerName.contains("performance") ||
-            lowerName.contains("comedy") || lowerName.contains("drama") ||
-            lowerName.contains("show") || lowerName.contains("act")) {
-            return "theater";
+        if (nameAndUrl.contains("theater") || nameAndUrl.contains("theatre") ||
+            nameAndUrl.contains("show") || nameAndUrl.contains("play") ||
+            nameAndUrl.contains("musical") || nameAndUrl.contains("stage") ||
+            nameAndUrl.contains("comedy") || nameAndUrl.contains("performance")) {
+            this.eventType = EVENT_TYPE_THEATER;
+            return;
         }
         
-        // Default
-        return "other";
+        // Default to other
+        this.eventType = EVENT_TYPE_OTHER;
     }
 }
