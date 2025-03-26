@@ -119,7 +119,17 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
     
     private void sendTestNotification(Context context) {
         Log.d(TAG, "Sending test notification");
-        sendNotification(context, "TEST ALERT: Tickets Available!", "This is a test alert. A real alert will look like this when tickets are found.", 9999, "https://tixel.com");
+        
+        // Use sample event details for the test notification to show how real notifications will look
+        String sampleEventName = "Sample Event";
+        String sampleEventDate = "March 30, 2025";
+        
+        // Create a notification that includes the sample event details
+        String notificationTitle = "TEST: Tickets for " + sampleEventName + "!";
+        String notificationMessage = "This is a test alert. A real notification will include event details like \"" + 
+            sampleEventName + " on " + sampleEventDate + "\". Tap to open the event page.";
+        
+        sendNotification(context, notificationTitle, notificationMessage, 9999, "https://tixel.com");
         
         // Play an additional alarm sound for the test
         try {
@@ -167,19 +177,24 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
             Log.d(TAG, "Page text contains 'listings available': " + pageText.contains("listings available"));
             
             if (hasTickets) {
-                // Trigger high-priority notification with sound and vibration
-                String notificationTitle = "Tickets Available!";
-                if (!eventName.isEmpty()) {
-                    notificationTitle = "Tickets for " + eventName + "!";
-                }
+                // Create a notification with a better title and message based on event details
+                String notificationTitle;
+                String notificationMessage;
                 
-                String notificationMessage = "Tickets found for your monitored event! Tap to open the website.";
-                if (!eventDate.isEmpty()) {
-                    notificationMessage = "Tickets found for your monitored event on " + eventDate + "! Tap to open.";
+                if (!eventName.isEmpty()) {
+                    notificationTitle = "🎟️ Tickets for " + eventName + "!";
+                } else {
+                    notificationTitle = "🎟️ Tickets Available!";
                 }
                 
                 if (!eventName.isEmpty() && !eventDate.isEmpty()) {
-                    notificationMessage = "Tickets found for " + eventName + " on " + eventDate + "! Tap to open.";
+                    notificationMessage = "Tickets have been found for " + eventName + " on " + eventDate + ". Tap to view the listing now!";
+                } else if (!eventName.isEmpty()) {
+                    notificationMessage = "Tickets have been found for " + eventName + ". Tap to view the listing now!";
+                } else if (!eventDate.isEmpty()) {
+                    notificationMessage = "Tickets have been found for your monitored event on " + eventDate + ". Tap to view the listing now!";
+                } else {
+                    notificationMessage = "Tickets have been found for your monitored event. Tap to view the listing now!";
                 }
                 
                 // Add URL ID to intent for event detail extraction when notification is clicked
