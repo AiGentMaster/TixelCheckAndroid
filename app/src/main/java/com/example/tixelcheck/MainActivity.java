@@ -3,8 +3,10 @@ package com.example.tixelcheck;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
@@ -22,6 +24,7 @@ import android.widget.Button;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -33,6 +36,15 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private UrlAdapter adapter;
     private List<MonitoredUrl> urlList;
+    
+    // Define a broadcast receiver for event detail updates
+    private BroadcastReceiver eventDetailsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Refresh the URL list to show updated event details
+            refreshUrlList();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +97,10 @@ public class MainActivity extends AppCompatActivity {
         
         // Ensure all active URLs have alarms set
         resetActiveAlarms();
+        
+        // Register for event details update broadcasts
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+            eventDetailsReceiver, new IntentFilter("com.example.tixelcheck.EVENT_DETAILS_UPDATED"));
     }
     
     @Override
@@ -92,6 +108,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // Also stop any active alarm when the app resumes
         stopActiveAlarm();
+        
+        // Refresh URL list to get latest event details
+        refreshUrlList();
     }
     
     @Override
@@ -99,6 +118,23 @@ public class MainActivity extends AppCompatActivity {
         super.onNewIntent(intent);
         // Stop active alarm when app is brought to front by a notification click
         stopActiveAlarm();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Unregister broadcast receiver
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(eventDetailsReceiver);
+    }
+    
+    /**
+     * Refreshes the URL list from the database
+     */
+    private void refreshUrlList() {
+        List<MonitoredUrl> freshUrls = UrlDatabase.getInstance(this).getAllUrls();
+        urlList.clear();
+        urlList.addAll(freshUrls);
+        adapter.notifyDataSetChanged();
     }
     
     /**
