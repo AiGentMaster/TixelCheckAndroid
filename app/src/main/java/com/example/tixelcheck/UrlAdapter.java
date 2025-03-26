@@ -62,8 +62,10 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             // Update alarm based on active state
             if (isChecked) {
                 TicketCheckerAlarm.setAlarm(context, url);
+                Toast.makeText(context, "Monitoring enabled", Toast.LENGTH_SHORT).show();
             } else {
                 TicketCheckerAlarm.cancelAlarm(context, url.getId());
+                Toast.makeText(context, "Monitoring disabled", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -77,20 +79,13 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             urlList.remove(position);
             notifyItemRemoved(position);
             notifyItemRangeChanged(position, urlList.size());
+            
+            Toast.makeText(context, "URL removed", Toast.LENGTH_SHORT).show();
         });
         
-        // Make the URL clickable to open in a browser
+        // Set up URL editing with normal click (opens EditUrlDialog)
         holder.itemView.setOnClickListener(v -> {
-            try {
-                String urlStr = url.getUrl();
-                if (!urlStr.startsWith("http://") && !urlStr.startsWith("https://")) {
-                    urlStr = "https://" + urlStr;
-                }
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(urlStr));
-                context.startActivity(browserIntent);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            showEditUrlDialog(position);
         });
         
         // Add long press to edit event details
@@ -103,6 +98,69 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
         holder.textEventDetails.setOnClickListener(v -> {
             showEventDetailsDialog(position);
         });
+    }
+    
+    /**
+     * Shows a dialog to edit URL settings
+     */
+    private void showEditUrlDialog(int position) {
+        MonitoredUrl url = urlList.get(position);
+        
+        EditUrlDialog dialog = new EditUrlDialog(context, url, (originalUrl, newUrl, newFrequency, isActive) -> {
+            // Cancel old alarm if URL or frequency changed
+            if (!originalUrl.getUrl().equals(newUrl) || originalUrl.getFrequency() != newFrequency) {
+                TicketCheckerAlarm.cancelAlarm(context, originalUrl.getId());
+            }
+            
+            // Update URL properties
+            originalUrl.setActive(isActive);
+            
+            // Only update URL in database if something changed
+            boolean changed = false;
+            
+            if (!originalUrl.getUrl().equals(newUrl)) {
+                // URL changed
+                changed = true;
+                originalUrl = new MonitoredUrl(
+                    originalUrl.getId(),
+                    newUrl,
+                    newFrequency,
+                    isActive,
+                    originalUrl.getEventName(),
+                    originalUrl.getEventDate()
+                );
+                urlList.set(position, originalUrl);
+            } else if (originalUrl.getFrequency() != newFrequency) {
+                // Only frequency changed
+                changed = true;
+                originalUrl = new MonitoredUrl(
+                    originalUrl.getId(),
+                    originalUrl.getUrl(),
+                    newFrequency,
+                    isActive,
+                    originalUrl.getEventName(),
+                    originalUrl.getEventDate()
+                );
+                urlList.set(position, originalUrl);
+            }
+            
+            if (changed || isActive != originalUrl.isActive()) {
+                // Update database
+                UrlDatabase.getInstance(context).updateUrl(originalUrl);
+                
+                // Update UI
+                notifyItemChanged(position);
+                
+                // Set new alarm if active
+                if (isActive) {
+                    TicketCheckerAlarm.setAlarm(context, originalUrl);
+                }
+                
+                Toast.makeText(context, "URL settings updated", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        dialog.show();
     }
 
     /**
