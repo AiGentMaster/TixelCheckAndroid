@@ -11,6 +11,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
@@ -117,6 +118,10 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             
             // Update the database
             UrlDatabase.getInstance(context).updateEventDetails(url.getId(), eventName, eventDate);
+            
+            // Send broadcast to notify MainActivity to refresh the URL list
+            Intent refreshIntent = new Intent("com.example.tixelcheck.EVENT_DETAILS_UPDATED");
+            LocalBroadcastManager.getInstance(context).sendBroadcast(refreshIntent);
             
             // Update the UI
             notifyItemChanged(position);
