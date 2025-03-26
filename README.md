@@ -2,7 +2,7 @@
 
 An Android application that monitors Tixel ticket URLs and alerts you when tickets become available.
 
-**Note: This project has been thoroughly reviewed and fixed with updated dependencies and improved build configuration. Repository declaration conflicts resolved.**
+**Note: This project has been thoroughly reviewed and fixed with updated dependencies and improved build configuration. Repository declaration conflicts resolved. Build system has been updated to use Gradle 7.4 and AGP 7.2.2.**
 
 ## Features
 
@@ -21,34 +21,22 @@ TixelCheck is set up with GitHub Actions to automatically build APKs when code i
 
 To build the app manually:
 
-1. Install Gradle 7.2:
-   ```
-   # On Ubuntu
-   sudo apt install gradle
-   
-   # On macOS
-   brew install gradle
-   
-   # On Windows
-   choco install gradle
-   ```
-
-2. Clone this repository:
+1. Clone this repository:
    ```
    git clone https://github.com/AiGentMaster/TixelCheckAndroid.git
    ```
 
-3. Navigate to the project directory:
+2. Navigate to the project directory:
    ```
    cd TixelCheckAndroid
    ```
 
-4. Build the debug APK:
+3. Build the debug APK using the Gradle wrapper:
    ```
-   gradle assembleProductionDebug
+   ./gradlew assembleProductionDebug
    ```
 
-5. The APK will be generated at:
+4. The APK will be generated at:
    ```
    app/build/outputs/apk/production/debug/app-production-debug.apk
    ```
@@ -98,11 +86,11 @@ TixelCheck requires the following permissions:
 
 ## Recent Fixes
 
-- Resolved repository declaration conflicts in Gradle files
-- Updated GitHub Actions workflow to use latest recommended Gradle action
-- Updated Gradle to version 7.2 for better compatibility
-- Simplified build configuration to focus on core functionality
-- Updated Android Gradle Plugin to version 7.0.4
+- Updated Gradle to version 7.4 for better compatibility
+- Updated Android Gradle Plugin to version 7.2.2
+- Simplified GitHub Actions workflow to use Gradle wrapper directly
+- Updated repository declarations for better dependency resolution
+- Improved build configuration with proper namespace declaration
 
 ## License
 
