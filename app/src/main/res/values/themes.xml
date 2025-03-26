@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme for light mode -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        
+        <!-- Card colors -->
+        <item name="cardBackgroundColor">#FFFFFF</item>
+        <item name="android:textColorPrimary">#212121</item>
+        <item name="android:textColorSecondary">#757575</item>
+        
+        <!-- Status colors -->
+        <item name="colorActive">#1976D2</item>       <!-- Blue -->
+        <item name="colorInactive">#9E9E9E</item>     <!-- Grey -->
+        <item name="colorTicketsFound">#4CAF50</item> <!-- Green -->
+        
+        <!-- Background colors -->
+        <item name="backgroundColor">#F5F5F5</item>
+        <item name="dialogBackgroundColor">#FFFFFF</item>
+    </style>
+</resources>
