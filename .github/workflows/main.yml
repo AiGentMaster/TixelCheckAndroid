@@ -19,14 +19,11 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # Install Gradle 7.4 directly
-      - name: Install Gradle 7.4
-        run: |
-          wget https://services.gradle.org/distributions/gradle-7.4-bin.zip
-          mkdir -p /tmp/gradle
-          unzip -d /tmp/gradle gradle-7.4-bin.zip
-          export PATH=$PATH:/tmp/gradle/gradle-7.4/bin
-          echo "$PATH" >> $GITHUB_PATH
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 7.4
+          arguments: --no-daemon
 
       - name: Show Gradle version
         run: gradle --version
