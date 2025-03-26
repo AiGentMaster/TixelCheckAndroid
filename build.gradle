@@ -2,10 +2,9 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        jcenter() // For older dependencies
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.2.2' // Downgraded to be compatible with Gradle 6.7.1
+        classpath 'com.android.tools.build:gradle:7.0.4' // Updated to be compatible with newer libraries
     }
 }
 
@@ -13,7 +12,6 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        jcenter() // For older dependencies
     }
 }
 
