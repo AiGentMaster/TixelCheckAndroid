@@ -5,7 +5,7 @@
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/colorPrimaryDark</item>
         <item name="colorPrimaryDark">#000000</item>
-        <item name="colorAccent">@color/colorAccentDark</item>
+        <item name="colorAccent">@color/accent_dark</item>
         
         <!-- Card colors -->
         <item name="cardBackgroundColor">#2D2D2D</item>
