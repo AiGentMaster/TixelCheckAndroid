@@ -33,8 +33,8 @@ public class HistoryAdapter extends ArrayAdapter<TicketHistoryEntry> {
         TextView timeText = convertView.findViewById(R.id.text_time);
         TextView messageText = convertView.findViewById(R.id.text_message);
         
-        timeText.setText(entry.getFormattedTimestamp());
-        messageText.setText(entry.getNote());
+        timeText.setText(entry.getFormattedDateTime());
+        messageText.setText(entry.getMessage());
         
         return convertView;
     }
