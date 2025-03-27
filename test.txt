@@ -1,18 +1,22 @@
 This is a test file to trigger a final build check.
 Recent fixes include:
 
-1. Fixed method call in HistoryDialog.java:
+1. Fixed method call mismatch in HistoryAdapter.java:
+   - Changed entry.getFormattedDateTime() to entry.getFormattedTimestamp()
+   - Changed entry.getMessage() to entry.getNote()
+
+2. Fixed method call in HistoryDialog.java:
    - Changed getHistoryForUrl to getTicketHistory to match the method name in UrlDatabase
 
-2. Added missing color resources used in UrlAdapter.java:
+3. Added missing color resources used in UrlAdapter.java:
    - ticketsFoundGreen
    - activeBlue
    - inactiveGrey
 
-3. Fixed method signature issue in TicketCheckerAlarm class:
+4. Fixed method signature issue in TicketCheckerAlarm class:
    - Added an overloaded cancelAlarm method that takes a URL ID (long) parameter
 
-4. Previous fixes:
+5. Previous fixes:
    - Added the missing setAlarm method to TicketCheckerAlarm
    - Fixed theme and color resource issues
    - Fixed attribute definitions
@@ -20,4 +24,4 @@ Recent fixes include:
 
 All issues should now be resolved and the project should compile successfully.
 
-Last update - Mar 27, 2025 - Fixed method name mismatch
+Last update - Mar 27, 2025 - Fixed method name mismatches in HistoryAdapter
