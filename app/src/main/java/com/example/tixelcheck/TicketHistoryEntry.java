@@ -43,4 +43,18 @@ public class TicketHistoryEntry {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy, hh:mma", Locale.getDefault());
         return sdf.format(new Date(timestamp));
     }
+    
+    /**
+     * Alias for getFormattedTimestamp() - used by HistoryAdapter
+     */
+    public String getFormattedDateTime() {
+        return getFormattedTimestamp();
+    }
+    
+    /**
+     * Alias for getNote() - used by HistoryAdapter
+     */
+    public String getMessage() {
+        return getNote();
+    }
 }
