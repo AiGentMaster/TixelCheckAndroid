@@ -48,8 +48,8 @@ public class MainActivity extends AppCompatActivity implements AddUrlDialog.UrlD
         // Initialize UI components
         initializeUI();
         
-        // Initialize database
-        urlDatabase = new UrlDatabase(this);
+        // Initialize database - using getInstance() instead of constructor
+        urlDatabase = UrlDatabase.getInstance(this);
         
         // Setup the URL list recycler view
         setupRecyclerView();
