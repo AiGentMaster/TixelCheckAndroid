@@ -9,6 +9,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -19,13 +20,16 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AddUrlDialog.UrlDialogListener {
 
     private RecyclerView rvUrlList;
     private UrlAdapter urlAdapter;
     private UrlDatabase urlDatabase;
     private TextView emptyStateTextView;
     private FloatingActionButton fabAddUrl;
+    
+    // Action for database updates
+    private static final String ACTION_DATABASE_UPDATED = "com.example.tixelcheck.URL_UPDATED";
 
     // BroadcastReceiver to handle database updates
     private BroadcastReceiver urlUpdateReceiver = new BroadcastReceiver() {
@@ -55,7 +59,13 @@ public class MainActivity extends AppCompatActivity {
         // Register for database updates
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 urlUpdateReceiver,
-                new IntentFilter(UrlDatabase.ACTION_DATABASE_UPDATED)
+                new IntentFilter(ACTION_DATABASE_UPDATED)
+        );
+        
+        // Also register for event details updates
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                urlUpdateReceiver,
+                new IntentFilter("com.example.tixelcheck.EVENT_DETAILS_UPDATED")
         );
     }
 
@@ -68,13 +78,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupRecyclerView() {
-        urlAdapter = new UrlAdapter(new ArrayList<>(), this, urlDatabase);
+        urlAdapter = new UrlAdapter(new ArrayList<>(), this);
         rvUrlList.setLayoutManager(new LinearLayoutManager(this));
         rvUrlList.setAdapter(urlAdapter);
     }
 
     private void refreshUrlList() {
-        ArrayList<MonitoredUrl> urls = urlDatabase.getAllUrls();
+        ArrayList<MonitoredUrl> urls = (ArrayList<MonitoredUrl>) urlDatabase.getAllUrls();
         urlAdapter.updateUrls(urls);
         
         // Show/hide empty state
@@ -88,8 +98,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAddUrlDialog() {
-        AddUrlDialog dialog = new AddUrlDialog(this, urlDatabase);
+        AddUrlDialog dialog = new AddUrlDialog(this, this);
         dialog.show();
+    }
+    
+    @Override
+    public void onUrlAdded(MonitoredUrl url) {
+        // Add to database
+        urlDatabase.addUrl(url);
+        
+        // Refresh the list
+        refreshUrlList();
+        
+        Toast.makeText(this, "URL added successfully", Toast.LENGTH_SHORT).show();
+        
+        // Broadcast URL update
+        Intent updateIntent = new Intent(ACTION_DATABASE_UPDATED);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(updateIntent);
     }
 
     @Override
@@ -102,8 +127,19 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.menu_check_now) {
-            // Start manual check
-            TicketCheckerAlarm.checkNow(this);
+            // Get all active URLs and check them
+            ArrayList<MonitoredUrl> activeUrls = (ArrayList<MonitoredUrl>) urlDatabase.getActiveUrls();
+            if (activeUrls.isEmpty()) {
+                Toast.makeText(this, "No active URLs to check", Toast.LENGTH_SHORT).show();
+            } else {
+                for (MonitoredUrl url : activeUrls) {
+                    // Start manual check for each URL
+                    Intent checkIntent = new Intent(this, TicketMonitorService.class);
+                    checkIntent.putExtra("url_id", url.getId());
+                    startService(checkIntent);
+                }
+                Toast.makeText(this, "Checking all active URLs...", Toast.LENGTH_SHORT).show();
+            }
             return true;
         } else if (id == R.id.menu_history) {
             HistoryDialog dialog = new HistoryDialog(this, urlDatabase);
