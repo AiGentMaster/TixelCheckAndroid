@@ -49,7 +49,7 @@ public class HistoryDialog {
         }
         
         // Load history entries
-        List<TicketHistoryEntry> historyEntries = UrlDatabase.getInstance(context).getHistoryForUrl(url.getId());
+        List<TicketHistoryEntry> historyEntries = UrlDatabase.getInstance(context).getTicketHistory(url.getId());
         
         if (historyEntries.isEmpty()) {
             historyList.setVisibility(View.GONE);
