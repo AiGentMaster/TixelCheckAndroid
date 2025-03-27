@@ -21,4 +21,9 @@
     <color name="colorInactive">#9E9E9E</color>
     <color name="colorTicketsFound">#F44336</color>
     <color name="dialogBackgroundColor">#FAFAFA</color>
+    
+    <!-- URL item status colors -->
+    <color name="ticketsFoundGreen">#4CAF50</color>
+    <color name="activeBlue">#2196F3</color>
+    <color name="inactiveGrey">#757575</color>
 </resources>
