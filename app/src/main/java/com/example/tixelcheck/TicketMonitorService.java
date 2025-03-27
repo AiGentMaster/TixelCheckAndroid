@@ -17,11 +17,14 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.TimeUnit;
 
 public class TicketMonitorService extends Service {
     private static final String TAG = "TicketMonitorService";
     private static final String CHANNEL_ID = "TixelCheckChannel";
     private static final int NOTIFICATION_ID = 1;
+    private static final int CONNECTION_TIMEOUT = 15000; // 15 seconds
 
     @Nullable
     @Override
@@ -71,10 +74,11 @@ public class TicketMonitorService extends Service {
         try {
             Log.d(TAG, "Checking URL: " + url.getUrl());
             
-            // Connect to URL and get HTML content with a 10-second timeout
+            // Connect to URL and get HTML content with timeout
             Document doc = Jsoup.connect(url.getUrl())
-                    .timeout(10000)
+                    .timeout(CONNECTION_TIMEOUT)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                    .followRedirects(true)
                     .get();
             
             // Check if tickets are available using the simple text filter
@@ -103,12 +107,26 @@ public class TicketMonitorService extends Service {
                 sendTicketAvailableNotification(url, statusMessage);
             }
             
-        } catch (IOException e) {
-            // Handle connection errors
-            Log.e(TAG, "Error checking URL: " + url.getUrl(), e);
+        } catch (SocketTimeoutException e) {
+            // Handle timeout specifically
+            Log.e(TAG, "Connection timed out for URL: " + url.getUrl(), e);
+            statusMessage = "Connection timed out. Will retry later.";
             
             // Update last checked timestamp but don't change availability status
             database.updateLastChecked(url.getId(), System.currentTimeMillis(), previousStatus);
+            
+            // Add history entry for the timeout
+            database.addTicketHistory(url.getId(), System.currentTimeMillis(), statusMessage);
+        } catch (IOException e) {
+            // Handle other connection errors
+            Log.e(TAG, "Error checking URL: " + url.getUrl(), e);
+            statusMessage = "Connection error. Will retry later.";
+            
+            // Update last checked timestamp but don't change availability status
+            database.updateLastChecked(url.getId(), System.currentTimeMillis(), previousStatus);
+            
+            // Add history entry for the error
+            database.addTicketHistory(url.getId(), System.currentTimeMillis(), statusMessage);
         }
     }
     
