@@ -18,18 +18,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for all branches and tags
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use the GitHub token for authentication
           
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
-          
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-version: 7.4
           
       - name: Get Gradle Version from Properties File
         id: gradle_version
@@ -43,35 +37,26 @@ jobs:
             echo "GRADLE_VERSION=7.4" >> $GITHUB_ENV
             echo "No gradle-wrapper.properties found, defaulting to Gradle 7.4"
           fi
+      
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
           
-      - name: Generate Gradle Wrapper Files
+      - name: Generate Gradle Wrapper using Gradle
         run: |
           # Remove existing wrapper files to ensure clean regeneration
           rm -rf gradle/wrapper
           rm -f gradlew
           rm -f gradlew.bat
           
-          # Create the wrapper directory
-          mkdir -p gradle/wrapper
+          # Use Gradle directly to generate the wrapper
+          gradle wrapper --gradle-version ${{ env.GRADLE_VERSION }} --distribution-type bin
           
-          # Download the latest gradle-wrapper.jar file
-          curl -o gradle/wrapper/gradle-wrapper.jar https://repo.maven.apache.org/maven2/org/gradle/gradle-wrapper/${{ env.GRADLE_VERSION }}/gradle-wrapper-${{ env.GRADLE_VERSION }}.jar
-          
-          # Create a proper gradle-wrapper.properties file
-          echo 'distributionBase=GRADLE_USER_HOME' > gradle/wrapper/gradle-wrapper.properties
-          echo 'distributionPath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
-          echo 'distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip' >> gradle/wrapper/gradle-wrapper.properties
-          echo 'zipStoreBase=GRADLE_USER_HOME' >> gradle/wrapper/gradle-wrapper.properties
-          echo 'zipStorePath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
-          
-          # Download the latest gradlew and gradlew.bat scripts
-          curl -o gradlew https://raw.githubusercontent.com/gradle/gradle/v${{ env.GRADLE_VERSION }}.0/gradlew
-          curl -o gradlew.bat https://raw.githubusercontent.com/gradle/gradle/v${{ env.GRADLE_VERSION }}.0/gradlew.bat
-          
-          # Make gradlew executable
+          # Make the wrapper executable
           chmod +x gradlew
           
-          # Verify the gradle wrapper is working
+          # Verify the wrapper works
           ./gradlew --version
         
       - name: Commit and push changes
