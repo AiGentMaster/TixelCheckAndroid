@@ -78,4 +78,27 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         
         alarmManager.cancel(pendingIntent);
     }
+    
+    /**
+     * Cancels the alarm with the given URL ID
+     * 
+     * @param context Application context
+     * @param urlId The ID of the MonitoredUrl to cancel
+     */
+    public static void cancelAlarm(Context context, long urlId) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) return;
+        
+        Intent intent = new Intent(context, TicketCheckerAlarm.class);
+        int requestCode = (int) urlId;
+        
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+            context, 
+            requestCode, 
+            intent, 
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        
+        alarmManager.cancel(pendingIntent);
+    }
 }
