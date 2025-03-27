@@ -2,15 +2,24 @@ name: Regenerate Gradle Wrapper
 
 on:
   workflow_dispatch:  # This allows manual triggering from the GitHub UI
+  pull_request:
+    paths:
+      - "gradle/wrapper/gradle-wrapper.properties"  # Trigger when this file changes
 
 jobs:
   regenerate-wrapper:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Explicitly allow writing to repository contents
+      pull-requests: write  # Explicitly allow writing to pull requests
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+        with:
+          fetch-depth: 0  # Fetch all history for all branches and tags
+          token: ${{ secrets.GITHUB_TOKEN }}  # Use the GitHub token for authentication
+          
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
@@ -22,35 +31,66 @@ jobs:
         with:
           gradle-version: 7.4
           
+      - name: Get Gradle Version from Properties File
+        id: gradle_version
+        run: |
+          if [ -f gradle/wrapper/gradle-wrapper.properties ]; then
+            DISTRIBUTION_URL=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2)
+            GRADLE_VERSION=$(echo $DISTRIBUTION_URL | grep -o '[0-9]\+\.[0-9]\+')
+            echo "GRADLE_VERSION=$GRADLE_VERSION" >> $GITHUB_ENV
+            echo "Using Gradle version: $GRADLE_VERSION from properties file"
+          else
+            echo "GRADLE_VERSION=7.4" >> $GITHUB_ENV
+            echo "No gradle-wrapper.properties found, defaulting to Gradle 7.4"
+          fi
+          
       - name: Generate Gradle Wrapper Files
         run: |
-          # Create the wrapper directory if it doesn't exist
+          # Remove existing wrapper files to ensure clean regeneration
+          rm -rf gradle/wrapper
+          rm -f gradlew
+          rm -f gradlew.bat
+          
+          # Create the wrapper directory
           mkdir -p gradle/wrapper
           
           # Download the latest gradle-wrapper.jar file
-          curl -o gradle/wrapper/gradle-wrapper.jar https://repo.maven.apache.org/maven2/org/gradle/gradle-wrapper/7.4/gradle-wrapper-7.4.jar
+          curl -o gradle/wrapper/gradle-wrapper.jar https://repo.maven.apache.org/maven2/org/gradle/gradle-wrapper/${{ env.GRADLE_VERSION }}/gradle-wrapper-${{ env.GRADLE_VERSION }}.jar
           
           # Create a proper gradle-wrapper.properties file
           echo 'distributionBase=GRADLE_USER_HOME' > gradle/wrapper/gradle-wrapper.properties
           echo 'distributionPath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
-          echo 'distributionUrl=https\://services.gradle.org/distributions/gradle-7.4-bin.zip' >> gradle/wrapper/gradle-wrapper.properties
+          echo 'distributionUrl=https\://services.gradle.org/distributions/gradle-${{ env.GRADLE_VERSION }}-bin.zip' >> gradle/wrapper/gradle-wrapper.properties
           echo 'zipStoreBase=GRADLE_USER_HOME' >> gradle/wrapper/gradle-wrapper.properties
           echo 'zipStorePath=wrapper/dists' >> gradle/wrapper/gradle-wrapper.properties
           
           # Download the latest gradlew and gradlew.bat scripts
-          curl -o gradlew https://raw.githubusercontent.com/gradle/gradle/v7.4.0/gradlew
-          curl -o gradlew.bat https://raw.githubusercontent.com/gradle/gradle/v7.4.0/gradlew.bat
+          curl -o gradlew https://raw.githubusercontent.com/gradle/gradle/v${{ env.GRADLE_VERSION }}.0/gradlew
+          curl -o gradlew.bat https://raw.githubusercontent.com/gradle/gradle/v${{ env.GRADLE_VERSION }}.0/gradlew.bat
           
           # Make gradlew executable
           chmod +x gradlew
+          
+          # Verify the gradle wrapper is working
+          ./gradlew --version
         
       - name: Commit and push changes
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add gradle/wrapper/gradle-wrapper.jar
-          git add gradle/wrapper/gradle-wrapper.properties
-          git add gradlew
-          git add gradlew.bat
-          git commit -m "Regenerate Gradle wrapper with version 7.4"
-          git push
+          
+          # Force-add all files to ensure binary files are included
+          git add -f gradle/wrapper/gradle-wrapper.jar
+          git add -f gradle/wrapper/gradle-wrapper.properties
+          git add -f gradlew
+          git add -f gradlew.bat
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          else
+            git commit -m "Regenerate Gradle wrapper with version ${{ env.GRADLE_VERSION }}"
+            git push
+            echo "Successfully updated Gradle wrapper files"
+          fi
