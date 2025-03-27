@@ -24,6 +24,7 @@ public class TicketMonitorService extends Service {
     private static final String TAG = "TicketMonitorService";
     private static final String CHANNEL_ID = "TixelCheckChannel";
     private static final int NOTIFICATION_ID = 1;
+    private static final int SERVICE_NOTIFICATION_ID = 9999;
     private static final int CONNECTION_TIMEOUT = 15000; // 15 seconds
 
     @Nullable
@@ -31,9 +32,23 @@ public class TicketMonitorService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+    
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        // Create notification channel
+        createNotificationChannel();
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Must create a notification for foreground service
+            startForeground(SERVICE_NOTIFICATION_ID, createServiceNotification());
+        }
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "Service started");
+        
         // Extract URL ID from intent
         long urlId = intent.getLongExtra("url_id", -1);
         
@@ -87,9 +102,11 @@ public class TicketMonitorService extends Service {
             if (currentStatus) {
                 statusMessage = "Tickets are now available for " + 
                     (url.hasEventDetails() ? url.getEventName() : "your monitored event");
+                Log.d(TAG, "Found tickets available in the page content!");
             } else {
                 statusMessage = "No tickets available for " + 
                     (url.hasEventDetails() ? url.getEventName() : "your monitored event");
+                Log.d(TAG, "No tickets available text found in the page content.");
             }
             
             Log.d(TAG, "Ticket status for URL " + urlId + ": " + statusMessage);
@@ -141,8 +158,13 @@ public class TicketMonitorService extends Service {
         // Convert the entire HTML to lowercase for case-insensitive matching
         String htmlText = doc.text().toLowerCase();
         
+        // Log some of the content for debugging
+        Log.d(TAG, "Page content sample: " + htmlText.substring(0, Math.min(500, htmlText.length())));
+        
         // Check for the exact phrases "ticket available" or "tickets available"
-        return htmlText.contains("ticket available") || htmlText.contains("tickets available");
+        boolean hasTickets = htmlText.contains("ticket available") || htmlText.contains("tickets available");
+        Log.d(TAG, "Has tickets available text: " + hasTickets);
+        return hasTickets;
     }
     
     /**
@@ -152,9 +174,6 @@ public class TicketMonitorService extends Service {
      * @param message The notification message to display
      */
     private void sendTicketAvailableNotification(MonitoredUrl url, String message) {
-        // Create notification channel for Android 8.0+
-        createNotificationChannel();
-        
         // Create intent to open the app when notification is clicked
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -175,6 +194,25 @@ public class TicketMonitorService extends Service {
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         
         notificationManager.notify((int) url.getId(), builder.build());
+        Log.d(TAG, "Notification sent for URL ID: " + url.getId());
+    }
+    
+    /**
+     * Create a notification for the foreground service
+     */
+    private android.app.Notification createServiceNotification() {
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 
+                PendingIntent.FLAG_IMMUTABLE);
+        
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_menu_search)
+                .setContentTitle("Checking for tickets")
+                .setContentText("Tixel Check is monitoring ticket availability")
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setContentIntent(pendingIntent);
+        
+        return builder.build();
     }
     
     /**
@@ -191,6 +229,7 @@ public class TicketMonitorService extends Service {
             
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
+            Log.d(TAG, "Notification channel created");
         }
     }
 }
