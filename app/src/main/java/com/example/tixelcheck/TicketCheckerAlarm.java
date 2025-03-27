@@ -6,11 +6,41 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.util.Log;
 
 public class TicketCheckerAlarm extends BroadcastReceiver {
+    private static final String TAG = "TicketCheckerAlarm";
+    
     @Override
     public void onReceive(Context context, Intent intent) {
-        // Placeholder for alarm handling logic
+        Log.d(TAG, "Alarm received - checking for tickets");
+        
+        // Extract URL ID from intent
+        long urlId = intent.getLongExtra("url_id", -1);
+        
+        if (urlId != -1) {
+            // Start the TicketMonitorService to check for tickets
+            Intent serviceIntent = new Intent(context, TicketMonitorService.class);
+            serviceIntent.putExtra("url_id", urlId);
+            
+            // Start the service to check for tickets
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent);
+            } else {
+                context.startService(serviceIntent);
+            }
+            
+            // Re-schedule the alarm for the next check
+            UrlDatabase database = UrlDatabase.getInstance(context);
+            MonitoredUrl url = database.getUrlById(urlId);
+            
+            if (url != null && url.isActive()) {
+                setAlarm(context, url);
+                Log.d(TAG, "Rescheduled alarm for URL ID: " + urlId);
+            }
+        } else {
+            Log.e(TAG, "Received alarm with invalid URL ID");
+        }
     }
     
     /**
@@ -40,7 +70,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         // Convert frequency from minutes to milliseconds
         long intervalMillis = url.getFrequency() * 60 * 1000;
         
-        // Schedule the alarm to repeat
+        // Schedule the alarm to trigger
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
@@ -54,6 +84,8 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
                 pendingIntent
             );
         }
+        
+        Log.d(TAG, "Alarm set for URL ID: " + url.getId() + " to trigger in " + url.getFrequency() + " minutes");
     }
     
     /**
@@ -77,6 +109,7 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         );
         
         alarmManager.cancel(pendingIntent);
+        Log.d(TAG, "Alarm canceled for URL ID: " + url.getId());
     }
     
     /**
@@ -100,5 +133,6 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         );
         
         alarmManager.cancel(pendingIntent);
+        Log.d(TAG, "Alarm canceled for URL ID: " + urlId);
     }
 }
