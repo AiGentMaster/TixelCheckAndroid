@@ -29,6 +29,17 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
         this.urlList = urlList;
         this.context = context;
     }
+    
+    /**
+     * Updates the URL list and refreshes the adapter
+     * 
+     * @param newUrlList The new list of URLs to display
+     */
+    public void updateUrls(List<MonitoredUrl> newUrlList) {
+        this.urlList.clear();
+        this.urlList.addAll(newUrlList);
+        notifyDataSetChanged();
+    }
 
     @NonNull
     @Override
