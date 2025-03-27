@@ -28,8 +28,9 @@ public class MainActivity extends AppCompatActivity implements AddUrlDialog.UrlD
     private TextView emptyStateTextView;
     private FloatingActionButton fabAddUrl;
     
-    // Action for database updates
-    private static final String ACTION_DATABASE_UPDATED = "com.example.tixelcheck.URL_UPDATED";
+    // Action for database updates - matching the string used in UrlAdapter
+    public static final String ACTION_DATABASE_UPDATED = "com.example.tixelcheck.URL_UPDATED";
+    public static final String ACTION_EVENT_DETAILS_UPDATED = "com.example.tixelcheck.EVENT_DETAILS_UPDATED";
 
     // BroadcastReceiver to handle database updates
     private BroadcastReceiver urlUpdateReceiver = new BroadcastReceiver() {
@@ -65,7 +66,7 @@ public class MainActivity extends AppCompatActivity implements AddUrlDialog.UrlD
         // Also register for event details updates
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 urlUpdateReceiver,
-                new IntentFilter("com.example.tixelcheck.EVENT_DETAILS_UPDATED")
+                new IntentFilter(ACTION_EVENT_DETAILS_UPDATED)
         );
     }
 
