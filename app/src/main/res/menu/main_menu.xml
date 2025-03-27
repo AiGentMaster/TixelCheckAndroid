@@ -2,8 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_toggle_theme"
-        android:title="Toggle Dark Mode"
-        android:icon="@drawable/ic_theme"
-        app:showAsAction="ifRoom" />
+        android:id="@+id/menu_check_now"
+        android:title="Check Now"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_history"
+        android:title="View History"
+        app:showAsAction="never" />
 </menu>

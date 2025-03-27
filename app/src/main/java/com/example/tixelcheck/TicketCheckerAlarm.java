@@ -7,10 +7,28 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import java.util.List;
+
 public class TicketCheckerAlarm extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        // Placeholder for alarm handling logic
+        // Extract URL ID from intent
+        long urlId = intent.getLongExtra("url_id", -1);
+        
+        if (urlId != -1) {
+            // Get the URL from database
+            MonitoredUrl url = UrlDatabase.getInstance(context).getUrlById(urlId);
+            
+            if (url != null && url.isActive()) {
+                // Start service to check URL
+                Intent serviceIntent = new Intent(context, TicketMonitorService.class);
+                serviceIntent.putExtra("url_id", urlId);
+                context.startService(serviceIntent);
+                
+                // Reset alarm for next check
+                setAlarm(context, url);
+            }
+        }
     }
     
     /**
@@ -100,5 +118,22 @@ public class TicketCheckerAlarm extends BroadcastReceiver {
         );
         
         alarmManager.cancel(pendingIntent);
+    }
+    
+    /**
+     * Immediately checks all active URLs
+     * 
+     * @param context Application context
+     */
+    public static void checkNow(Context context) {
+        // Get all active URLs
+        List<MonitoredUrl> activeUrls = UrlDatabase.getInstance(context).getActiveUrls();
+        
+        // Start service for each URL
+        for (MonitoredUrl url : activeUrls) {
+            Intent serviceIntent = new Intent(context, TicketMonitorService.class);
+            serviceIntent.putExtra("url_id", url.getId());
+            context.startService(serviceIntent);
+        }
     }
 }

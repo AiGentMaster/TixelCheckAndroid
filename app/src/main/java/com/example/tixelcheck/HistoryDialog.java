@@ -9,6 +9,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -17,10 +18,27 @@ import java.util.List;
 public class HistoryDialog {
     private final Context context;
     private final MonitoredUrl url;
+    private final UrlDatabase urlDatabase;
+    private boolean showAllUrls = false;
     
+    /**
+     * Constructor for showing history for a specific URL
+     */
     public HistoryDialog(Context context, MonitoredUrl url) {
         this.context = context;
         this.url = url;
+        this.urlDatabase = UrlDatabase.getInstance(context);
+        this.showAllUrls = false;
+    }
+    
+    /**
+     * Constructor for showing history for all URLs
+     */
+    public HistoryDialog(Context context, UrlDatabase urlDatabase) {
+        this.context = context;
+        this.url = null;
+        this.urlDatabase = urlDatabase;
+        this.showAllUrls = true;
     }
     
     public void show() {
@@ -38,18 +56,33 @@ public class HistoryDialog {
         Button closeButton = view.findViewById(R.id.button_close);
         
         // Set dialog title
-        titleText.setText("Ticket History");
-        
-        // Set event name
-        if (url.hasEventDetails()) {
-            eventNameText.setText(url.getEventName());
-            eventNameText.setVisibility(View.VISIBLE);
-        } else {
+        if (showAllUrls) {
+            titleText.setText("All Tickets History");
             eventNameText.setVisibility(View.GONE);
+        } else {
+            titleText.setText("Ticket History");
+            // Set event name
+            if (url != null && url.hasEventDetails()) {
+                eventNameText.setText(url.getEventName());
+                eventNameText.setVisibility(View.VISIBLE);
+            } else {
+                eventNameText.setVisibility(View.GONE);
+            }
         }
         
         // Load history entries
-        List<TicketHistoryEntry> historyEntries = UrlDatabase.getInstance(context).getTicketHistory(url.getId());
+        List<TicketHistoryEntry> historyEntries;
+        if (showAllUrls) {
+            // Get history for all URLs
+            historyEntries = new ArrayList<>();
+            List<MonitoredUrl> allUrls = urlDatabase.getAllUrls();
+            for (MonitoredUrl monitoredUrl : allUrls) {
+                historyEntries.addAll(urlDatabase.getTicketHistory(monitoredUrl.getId()));
+            }
+        } else {
+            // Get history for specific URL
+            historyEntries = urlDatabase.getTicketHistory(url.getId());
+        }
         
         if (historyEntries.isEmpty()) {
             historyList.setVisibility(View.GONE);
