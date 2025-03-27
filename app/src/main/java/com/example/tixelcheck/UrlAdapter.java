@@ -130,8 +130,8 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
                 Toast.makeText(context, "Monitoring disabled", Toast.LENGTH_SHORT).show();
             }
             
-            // Broadcast URL update
-            Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+            // Broadcast URL update using the constant from MainActivity
+            Intent updateIntent = new Intent(MainActivity.ACTION_DATABASE_UPDATED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent);
         });
 
@@ -148,8 +148,8 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             
             Toast.makeText(context, "URL removed", Toast.LENGTH_SHORT).show();
             
-            // Broadcast URL update
-            Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+            // Broadcast URL update using the constant from MainActivity
+            Intent updateIntent = new Intent(MainActivity.ACTION_DATABASE_UPDATED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent);
         });
         
@@ -226,8 +226,8 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
                     TicketCheckerAlarm.setAlarm(context, updatedUrl);
                 }
                 
-                // Broadcast URL update
-                Intent updateIntent = new Intent("com.example.tixelcheck.URL_UPDATED");
+                // Broadcast URL update using the constant from MainActivity
+                Intent updateIntent = new Intent(MainActivity.ACTION_DATABASE_UPDATED);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent);
                 
                 Toast.makeText(context, "URL settings updated", Toast.LENGTH_SHORT).show();
@@ -253,7 +253,7 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.UrlViewHolder> {
             UrlDatabase.getInstance(context).updateEventDetails(url.getId(), eventName, eventDate);
             
             // Send broadcast to notify MainActivity to refresh the URL list
-            Intent refreshIntent = new Intent("com.example.tixelcheck.EVENT_DETAILS_UPDATED");
+            Intent refreshIntent = new Intent(MainActivity.ACTION_EVENT_DETAILS_UPDATED);
             LocalBroadcastManager.getInstance(context).sendBroadcast(refreshIntent);
             
             // Update the UI
